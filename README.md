@@ -83,6 +83,24 @@ npm start
 | `/api/session/:id` | DELETE | End session |
 | `/voice` | WS | Audio streaming endpoint |
 
+## First-Time Setup
+
+New to RunPod and HuggingFace? See the [Setup Guide](GUIDE.md) for step-by-step instructions.
+
+## Management Dashboard
+
+Open `public/manage.html` (or click "Manage" in the Voice UI header) to:
+- Start/stop your RunPod pod
+- Monitor uptime and estimated costs
+- Check server health
+- Quick-link to Voice UI and Jupyter terminal
+
+All settings are saved in your browser's localStorage.
+
+## OpenClaw Skill
+
+The `skill/` directory contains an [OpenClaw](https://openclaw.ai) skill definition (`SKILL.md`) that enables AI agents to autonomously set up, manage, and troubleshoot PersonaPlex deployments using the RunPod API.
+
 ## License
 
 MIT

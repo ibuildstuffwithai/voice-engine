@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PersonaPlex Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#fafafa;color:#171717;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input{font-family:inherit;outline:none}
+
+.header{width:100%;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e5e5;background:#fff}
+.header-left{display:flex;align-items:center;gap:10px}
+.header h1{font-size:18px;font-weight:600;letter-spacing:-0.3px}
+.header h1 span{color:#737373;font-weight:400}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-right a{font-size:13px;color:#737373;text-decoration:none;transition:color .15s}
+.header-right a:hover{color:#171717}
+.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.status-dot.running{background:#22c55e}
+.status-dot.stopped{background:#ef4444}
+.status-dot.unknown{background:#a3a3a3}
+
+.container{max-width:720px;margin:0 auto;padding:24px}
+.grid{display:grid;gap:20px}
+
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card h2{font-size:15px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card h2 svg{width:18px;height:18px;color:#737373}
+
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f5f5f5}
+.info-row:last-child{border-bottom:none}
+.info-label{font-size:13px;color:#737373}
+.info-value{font-size:13px;font-weight:500}
+
+.btn-row{display:flex;gap:10px;margin-top:16px}
+.btn{padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;transition:all .15s}
+.btn-primary{background:#171717;color:#fff}
+.btn-primary:hover{background:#404040}
+.btn-danger{background:#fee2e2;color:#dc2626}
+.btn-danger:hover{background:#fecaca}
+.btn-secondary{background:#f5f5f5;color:#171717}
+.btn-secondary:hover{background:#e5e5e5}
+.btn-success{background:#dcfce7;color:#16a34a}
+.btn-success:hover{background:#bbf7d0}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.input-group{margin-bottom:16px}
+.input-group label{display:block;font-size:12px;font-weight:500;color:#737373;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.input-wrap{display:flex;gap:8px}
+.input-wrap input{flex:1;padding:10px 14px;border:1px solid #e5e5e5;border-radius:10px;font-size:13px;transition:border-color .15s}
+.input-wrap input:focus{border-color:#a3a3a3}
+.reveal-btn{padding:8px 12px;border-radius:10px;background:#f5f5f5;font-size:12px;color:#737373;white-space:nowrap}
+.reveal-btn:hover{background:#e5e5e5}
+
+.quick-actions{display:flex;flex-wrap:wrap;gap:10px}
+.quick-action{flex:1;min-width:140px;padding:14px;border-radius:12px;background:#f5f5f5;text-align:center;font-size:13px;font-weight:500;transition:all .15s;text-decoration:none;color:#171717}
+.quick-action:hover{background:#e5e5e5}
+.quick-action svg{display:block;margin:0 auto 6px;width:20px;height:20px;color:#737373}
+
+.log-box{background:#fafafa;border:1px solid #e5e5e5;border-radius:10px;padding:12px;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;color:#525252;max-height:200px;overflow-y:auto;white-space:pre-wrap;display:none}
+.log-box.visible{display:block}
+
+.save-msg{font-size:12px;color:#16a34a;margin-left:10px;opacity:0;transition:opacity .3s}
+.save-msg.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>PersonaPlex <span>Manager</span></h1>
+    <span class="status-dot unknown" id="headerDot" title="Unknown"></span>
+  </div>
+  <div class="header-right">
+    <a href="index.html">← Voice UI</a>
+  </div>
+</div>
+
+<div class="container">
+<div class="grid">
+
+<!-- Pod Status -->
+<div class="card">
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Pod Status</h2>
+  <div id="podInfo">
+    <div class="info-row"><span class="info-label">Pod ID</span><span class="info-value" id="podId">—</span></div>
+    <div class="info-row"><span class="info-label">Status</span><span class="info-value" id="podStatus">Unknown</span></div>
+    <div class="info-row"><span class="info-label">GPU</span><span class="info-value" id="podGpu">—</span></div>
+    <div class="info-row"><span class="info-label">Uptime</span><span class="info-value" id="podUptime">—</span></div>
+    <div class="info-row"><span class="info-label">Est. Cost</span><span class="info-value" id="podCost">—</span></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-success" id="btnStart" onclick="startPod()" disabled>▶ Start</button>
+    <button class="btn btn-danger" id="btnStop" onclick="stopPod()" disabled>■ Stop</button>
+  </div>
+</div>
+
+<!-- Server Status -->
+<div class="card">
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Server Status</h2>
+  <div class="info-row"><span class="info-label">PersonaPlex Server</span><span class="info-value" id="serverStatus">Unknown</span></div>
+  <div class="info-row"><span class="info-label">URL</span><span class="info-value"><a href="#" id="serverUrl" target="_blank" style="color:#2563eb;text-decoration:none">—</a></span></div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="btnOpenUI" onclick="openVoiceUI()" disabled>Open Voice UI</button>
+    <button class="btn btn-secondary" onclick="checkServer()">Refresh</button>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="card">
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings <span class="save-msg" id="saveMsg">✓ Saved</span></h2>
+  <div class="input-group">
+    <label>HuggingFace Token</label>
+    <div class="input-wrap">
+      <input type="password" id="hfToken" placeholder="hf_...">
+      <button class="reveal-btn" onclick="toggleReveal(this)">Show</button>
+    </div>
+  </div>
+  <div class="input-group">
+    <label>RunPod API Key</label>
+    <div class="input-wrap">
+      <input type="password" id="rpKey" placeholder="rpa_...">
+      <button class="reveal-btn" onclick="toggleReveal(this)">Show</button>
+    </div>
+  </div>
+  <div class="input-group">
+    <label>Pod ID</label>
+    <div class="input-wrap">
+      <input type="text" id="rpPodId" placeholder="e.g. abc123xyz">
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card">
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Quick Actions</h2>
+  <div class="quick-actions">
+    <a class="quick-action" href="#" id="qaVoice" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      Open Voice UI
+    </a>
+    <a class="quick-action" href="#" id="qaJupyter" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      Jupyter Terminal
+    </a>
+    <button class="quick-action" onclick="toggleLogs()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      View Logs
+    </button>
+  </div>
+  <div class="log-box" id="logBox">No logs available.</div>
+</div>
+
+</div>
+</div>
+
+<script>
+const LS_KEY = 'personaplex-manager';
+let pollTimer = null;
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; }
+}
+function save(d) { localStorage.setItem(LS_KEY, JSON.stringify(d)); }
+
+function init() {
+  const s = load();
+  if (s.hfToken) document.getElementById('hfToken').value = s.hfToken;
+  if (s.rpKey) document.getElementById('rpKey').value = s.rpKey;
+  if (s.podId) document.getElementById('rpPodId').value = s.podId;
+  updateLinks();
+  if (s.rpKey && s.podId) fetchPodStatus();
+  pollTimer = setInterval(() => { const c = load(); if (c.rpKey && c.podId) fetchPodStatus(); }, 30000);
+}
+
+function saveSettings() {
+  const d = {
+    hfToken: document.getElementById('hfToken').value.trim(),
+    rpKey: document.getElementById('rpKey').value.trim(),
+    podId: document.getElementById('rpPodId').value.trim()
+  };
+  save(d);
+  updateLinks();
+  const msg = document.getElementById('saveMsg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 2000);
+  if (d.rpKey && d.podId) fetchPodStatus();
+}
+
+function updateLinks() {
+  const s = load();
+  const pid = s.podId || '';
+  const voiceUrl = pid ? `https://${pid}-8998.proxy.runpod.net` : '#';
+  const jupyterUrl = pid ? `https://${pid}-8888.proxy.runpod.net` : '#';
+  document.getElementById('qaVoice').href = voiceUrl;
+  document.getElementById('qaJupyter').href = jupyterUrl;
+  document.getElementById('serverUrl').href = voiceUrl;
+  document.getElementById('serverUrl').textContent = pid ? voiceUrl : '—';
+}
+
+async function rpQuery(query) {
+  const s = load();
+  if (!s.rpKey) { alert('Set RunPod API key first'); return null; }
+  const r = await fetch('https://api.runpod.io/graphql', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + s.rpKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query })
+  });
+  return r.json();
+}
+
+async function fetchPodStatus() {
+  const s = load();
+  if (!s.podId) return;
+  try {
+    const r = await rpQuery(`query { pod(input: { podId: "${s.podId}" }) { id name desiredStatus gpuDisplayName machine { dataCenterId } runtime { uptimeInSeconds gpus { gpuUtilPercent } } costPerHr } }`);
+    if (!r || !r.data || !r.data.pod) {
+      setStatus('unknown', 'Not Found');
+      return;
+    }
+    const p = r.data.pod;
+    document.getElementById('podId').textContent = p.id;
+    document.getElementById('podGpu').textContent = p.gpuDisplayName || '—';
+    const running = p.desiredStatus === 'RUNNING' && p.runtime;
+    if (running) {
+      const secs = p.runtime.uptimeInSeconds || 0;
+      const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+      document.getElementById('podUptime').textContent = `${h}h ${m}m`;
+      const cost = ((secs / 3600) * (p.costPerHr || 0.40)).toFixed(2);
+      document.getElementById('podCost').textContent = `$${cost}`;
+      setStatus('running', 'Running');
+      document.getElementById('btnStop').disabled = false;
+      document.getElementById('btnStart').disabled = true;
+      document.getElementById('btnOpenUI').disabled = false;
+    } else {
+      document.getElementById('podUptime').textContent = '—';
+      document.getElementById('podCost').textContent = '—';
+      setStatus('stopped', p.desiredStatus || 'Stopped');
+      document.getElementById('btnStop').disabled = true;
+      document.getElementById('btnStart').disabled = false;
+      document.getElementById('btnOpenUI').disabled = true;
+    }
+    checkServer();
+  } catch (e) {
+    console.error(e);
+    setStatus('unknown', 'Error');
+  }
+}
+
+function setStatus(cls, text) {
+  const dot = document.getElementById('headerDot');
+  dot.className = 'status-dot ' + cls;
+  document.getElementById('podStatus').textContent = text;
+}
+
+async function startPod() {
+  const s = load();
+  if (!s.podId) return;
+  document.getElementById('btnStart').disabled = true;
+  await rpQuery(`mutation { podResume(input: { podId: "${s.podId}", gpuCount: 1 }) { id desiredStatus } }`);
+  setTimeout(fetchPodStatus, 3000);
+}
+
+async function stopPod() {
+  const s = load();
+  if (!s.podId) return;
+  document.getElementById('btnStop').disabled = true;
+  await rpQuery(`mutation { podStop(input: { podId: "${s.podId}" }) { id desiredStatus } }`);
+  setTimeout(fetchPodStatus, 2000);
+}
+
+async function checkServer() {
+  const s = load();
+  if (!s.podId) return;
+  const el = document.getElementById('serverStatus');
+  try {
+    const r = await fetch(`https://${s.podId}-8998.proxy.runpod.net/api/health`, { mode: 'no-cors', signal: AbortSignal.timeout(5000) });
+    el.textContent = '🟢 Reachable';
+  } catch {
+    el.textContent = '🔴 Unreachable';
+  }
+}
+
+function openVoiceUI() {
+  const s = load();
+  if (s.podId) window.open(`https://${s.podId}-8998.proxy.runpod.net`, '_blank');
+}
+
+function toggleReveal(btn) {
+  const input = btn.previousElementSibling;
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = 'Hide'; }
+  else { input.type = 'password'; btn.textContent = 'Show'; }
+}
+
+function toggleLogs() {
+  document.getElementById('logBox').classList.toggle('visible');
+}
+
+init();
+</script>
+</body>
+</html>
