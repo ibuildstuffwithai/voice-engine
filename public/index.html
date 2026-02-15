@@ -88,6 +88,21 @@ input,select,textarea{font-family:inherit;outline:none}
 .btn-primary{padding:10px 20px;border-radius:10px;font-size:14px;font-weight:500;background:#171717;color:#fff}
 .btn-primary:hover{background:#333}
 
+/* Voice Grid */
+.voice-grid{display:flex;flex-direction:column;gap:16px}
+.voice-section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#a3a3a3;margin-bottom:2px}
+.voice-section{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.voice-card{display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px solid #e5e5e5;border-radius:10px;background:#fafafa;cursor:pointer;transition:all .15s;user-select:none}
+.voice-card:hover{border-color:#a3a3a3;background:#f5f5f5}
+.voice-card.selected{border-color:#171717;background:#fff;box-shadow:0 0 0 1px #171717}
+.voice-card .vc-info{flex:1;min-width:0}
+.voice-card .vc-name{font-size:13px;font-weight:600;color:#171717;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.voice-card .vc-style{font-size:11px;color:#a3a3a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.voice-card .vc-play{width:28px;height:28px;border-radius:50%;background:#171717;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.voice-card .vc-play:hover{background:#333}
+.voice-card .vc-play svg{width:12px;height:12px;color:#fff;fill:#fff}
+.voice-card .vc-play.playing{background:#22c55e}
+
 /* Responsive */
 @media(max-width:480px){.main{padding:24px 16px}.card{padding:24px}}
 </style>
@@ -124,7 +139,8 @@ input,select,textarea{font-family:inherit;outline:none}
 
     <div class="fg">
       <label>Voice</label>
-      <select id="voiceSelect"></select>
+      <select id="voiceSelect" style="display:none"></select>
+      <div class="voice-grid" id="voiceGrid"></div>
     </div>
 
     <button class="connect-btn" id="connectBtn" onclick="toggleCall()">Start Call</button>
@@ -212,28 +228,93 @@ function saveSettings() {
 
 // Voices
 const voices = [
-  { id: 'NATF0', name: 'Nova — Natural Female', group: 'Natural' },
-  { id: 'NATF1', name: 'Aria — Natural Female', group: 'Natural' },
-  { id: 'NATF2', name: 'Luna — Natural Female', group: 'Natural' },
-  { id: 'NATF3', name: 'Sage — Natural Female', group: 'Natural' },
-  { id: 'NATM0', name: 'Atlas — Natural Male', group: 'Natural' },
-  { id: 'NATM1', name: 'Orion — Natural Male', group: 'Natural' },
-  { id: 'NATM2', name: 'Felix — Natural Male', group: 'Natural' },
-  { id: 'NATM3', name: 'Reed — Natural Male', group: 'Natural' },
-  { id: 'VARF0', name: 'Vox-F0 — Variety Female', group: 'Variety' },
-  { id: 'VARF1', name: 'Vox-F1 — Variety Female', group: 'Variety' },
-  { id: 'VARM0', name: 'Vox-M0 — Variety Male', group: 'Variety' },
-  { id: 'VARM1', name: 'Vox-M1 — Variety Male', group: 'Variety' },
+  { id: 'NATF0', name: 'Nova', style: 'Warm, conversational', gender: 'female', sample: true },
+  { id: 'NATF1', name: 'Aria', style: 'Clear, professional', gender: 'female', sample: true },
+  { id: 'NATF2', name: 'Luna', style: 'Friendly, engaging', gender: 'female', sample: true },
+  { id: 'NATF3', name: 'Sage', style: 'Calm, thoughtful', gender: 'female', sample: true },
+  { id: 'NATM0', name: 'Atlas', style: 'Strong, confident', gender: 'male', sample: true },
+  { id: 'NATM1', name: 'Orion', style: 'Deep, authoritative', gender: 'male', sample: true },
+  { id: 'NATM2', name: 'Felix', style: 'Bright, energetic', gender: 'male', sample: true },
+  { id: 'NATM3', name: 'Reed', style: 'Smooth, relaxed', gender: 'male', sample: true },
+  { id: 'VARF0', name: 'Vox-F0', style: 'Variety', gender: 'female', sample: false },
+  { id: 'VARF1', name: 'Vox-F1', style: 'Variety', gender: 'female', sample: false },
+  { id: 'VARF2', name: 'Vox-F2', style: 'Variety', gender: 'female', sample: false },
+  { id: 'VARF3', name: 'Vox-F3', style: 'Variety', gender: 'female', sample: false },
+  { id: 'VARF4', name: 'Vox-F4', style: 'Variety', gender: 'female', sample: false },
+  { id: 'VARM0', name: 'Vox-M0', style: 'Variety', gender: 'male', sample: false },
+  { id: 'VARM1', name: 'Vox-M1', style: 'Variety', gender: 'male', sample: false },
+  { id: 'VARM2', name: 'Vox-M2', style: 'Variety', gender: 'male', sample: false },
+  { id: 'VARM3', name: 'Vox-M3', style: 'Variety', gender: 'male', sample: false },
+  { id: 'VARM4', name: 'Vox-M4', style: 'Variety', gender: 'male', sample: false },
 ];
+
+let selectedVoice = 'NATF2';
+let previewAudio = null;
 
 function populateVoices() {
   const sel = document.getElementById('voiceSelect');
+  const grid = document.getElementById('voiceGrid');
   voices.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.id; opt.textContent = v.name;
     sel.appendChild(opt);
   });
-  sel.value = 'NATF2';
+  sel.value = selectedVoice;
+
+  const sections = [
+    { label: '♀ Natural Female', filter: v => v.gender === 'female' && v.sample },
+    { label: '♂ Natural Male', filter: v => v.gender === 'male' && v.sample },
+    { label: '♀ Variety Female', filter: v => v.gender === 'female' && !v.sample },
+    { label: '♂ Variety Male', filter: v => v.gender === 'male' && !v.sample },
+  ];
+
+  sections.forEach(sec => {
+    const items = voices.filter(sec.filter);
+    if (!items.length) return;
+    const lbl = document.createElement('div');
+    lbl.className = 'voice-section-label';
+    lbl.textContent = sec.label;
+    grid.appendChild(lbl);
+
+    const sectionDiv = document.createElement('div');
+    sectionDiv.className = 'voice-section';
+    items.forEach(v => {
+      const card = document.createElement('div');
+      card.className = 'voice-card' + (v.id === selectedVoice ? ' selected' : '');
+      card.dataset.id = v.id;
+      card.innerHTML = `
+        <div class="vc-info">
+          <div class="vc-name">${v.name}</div>
+          <div class="vc-style">${v.style}</div>
+        </div>
+        ${v.sample ? '<div class="vc-play" data-sample="' + v.id + '" title="Preview"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>' : ''}
+      `;
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.vc-play')) return;
+        selectVoice(v.id);
+      });
+      sectionDiv.appendChild(card);
+    });
+    grid.appendChild(sectionDiv);
+  });
+
+  grid.addEventListener('click', (e) => {
+    const playBtn = e.target.closest('.vc-play');
+    if (!playBtn) return;
+    e.stopPropagation();
+    const id = playBtn.dataset.sample;
+    if (previewAudio) { previewAudio.pause(); previewAudio = null; document.querySelectorAll('.vc-play.playing').forEach(b => b.classList.remove('playing')); }
+    previewAudio = new Audio('/samples/' + id + '.wav');
+    playBtn.classList.add('playing');
+    previewAudio.play();
+    previewAudio.onended = () => { playBtn.classList.remove('playing'); previewAudio = null; };
+  });
+}
+
+function selectVoice(id) {
+  selectedVoice = id;
+  document.getElementById('voiceSelect').value = id;
+  document.querySelectorAll('.voice-card').forEach(c => c.classList.toggle('selected', c.dataset.id === id));
 }
 
 // Presets
