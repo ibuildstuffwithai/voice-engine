@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Engine — Test Console</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #0e0e10; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
+  h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+  .subtitle { color: #888; font-size: 14px; margin-bottom: 40px; }
+  .card { background: #1a1a1e; border: 1px solid #2a2a2e; border-radius: 16px; padding: 32px; width: 100%; max-width: 480px; margin-bottom: 20px; }
+  .card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 16px; }
+  label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
+  select, textarea { width: 100%; background: #111114; border: 1px solid #333; border-radius: 8px; color: #e0e0e0; padding: 10px 12px; font-size: 14px; font-family: inherit; margin-bottom: 16px; }
+  textarea { height: 80px; resize: vertical; }
+  select:focus, textarea:focus { outline: none; border-color: #c026d3; }
+
+  .call-btn {
+    width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .call-btn.start { background: #c026d3; color: white; }
+  .call-btn.start:hover { background: #a020b0; }
+  .call-btn.end { background: #ef4444; color: white; }
+  .call-btn.end:hover { background: #dc2626; }
+  .call-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .status { text-align: center; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; }
+  .status.idle { background: #1a1a1e; color: #666; }
+  .status.connecting { background: #1a1520; color: #c026d3; }
+  .status.active { background: #0a1a0a; color: #22c55e; }
+  .status.error { background: #1a0a0a; color: #ef4444; }
+
+  .visualizer { width: 100%; height: 60px; border-radius: 8px; background: #111114; margin-bottom: 16px; }
+
+  .log { background: #111114; border-radius: 8px; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #666; max-height: 200px; overflow-y: auto; }
+  .log .entry { margin-bottom: 4px; }
+  .log .entry.info { color: #888; }
+  .log .entry.success { color: #22c55e; }
+  .log .entry.error { color: #ef4444; }
+  .log .entry.audio { color: #c026d3; }
+</style>
+</head>
+<body>
+
+<h1>🎙️ Voice Engine</h1>
+<p class="subtitle">Real-time voice conversations with AI agents</p>
+
+<div class="card">
+  <h2>Backend Connection</h2>
+  <label>PersonaPlex Server URL</label>
+  <input type="text" id="backendUrl" placeholder="https://your-runpod-id-8998.proxy.runpod.net" value="" style="width:100%;background:#111114;border:1px solid #333;border-radius:8px;color:#e0e0e0;padding:10px 12px;font-size:14px;font-family:inherit;margin-bottom:12px;">
+  <label>HuggingFace Token (for model download)</label>
+  <input type="text" id="hfToken" placeholder="hf_xxxxx" value="" style="width:100%;background:#111114;border:1px solid #333;border-radius:8px;color:#e0e0e0;padding:10px 12px;font-size:14px;font-family:inherit;margin-bottom:12px;">
+  <div style="display:flex;gap:8px">
+    <button onclick="saveConfig()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#c026d3;color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Save Config</button>
+    <button onclick="testConnection()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#1a1a1e;border:1px solid #333;color:#e0e0e0;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Test Connection</button>
+  </div>
+  <div id="configStatus" style="margin-top:8px;font-size:12px;color:#666;text-align:center;"></div>
+</div>
+
+<div class="card">
+  <h2>Voice & Persona</h2>
+  <label>Voice</label>
+  <select id="voiceSelect"></select>
+  <label>Persona</label>
+  <textarea id="personaInput">You are a wise and friendly AI assistant. Answer questions in a clear and engaging way.</textarea>
+</div>
+
+<div class="card">
+  <h2>Session</h2>
+  <div class="status idle" id="status">Ready — click Start Call</div>
+  <canvas class="visualizer" id="visualizer"></canvas>
+  <button class="call-btn start" id="callBtn" onclick="toggleCall()">Start Call</button>
+</div>
+
+<div class="card">
+  <h2>Log</h2>
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+const voiceSelect = document.getElementById('voiceSelect');
+const personaInput = document.getElementById('personaInput');
+const callBtn = document.getElementById('callBtn');
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+const canvas = document.getElementById('visualizer');
+const ctx = canvas.getContext('2d');
+
+let ws = null;
+let mediaStream = null;
+let audioContext = null;
+let analyser = null;
+let processor = null;
+let isActive = false;
+
+// Load voices
+async function loadVoices() {
+  try {
+    const res = await fetch('/api/voices');
+    const voices = await res.json();
+    Object.entries(voices).forEach(([category, list]) => {
+      const group = document.createElement('optgroup');
+      group.label = category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      list.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.name} (${v.id}) — ${v.style}`;
+        if (v.id === 'NATF2') opt.selected = true;
+        group.appendChild(opt);
+      });
+      voiceSelect.appendChild(group);
+    });
+  } catch (e) {
+    log('Failed to load voices', 'error');
+  }
+}
+
+function log(msg, type = 'info') {
+  const entry = document.createElement('div');
+  entry.className = `entry ${type}`;
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logEl.appendChild(entry);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(text, cls) {
+  statusEl.textContent = text;
+  statusEl.className = `status ${cls}`;
+}
+
+async function toggleCall() {
+  if (isActive) {
+    endCall();
+  } else {
+    startCall();
+  }
+}
+
+async function startCall() {
+  try {
+    setStatus('Requesting microphone...', 'connecting');
+    log('Requesting microphone access...');
+
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: { sampleRate: 24000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
+    });
+    log('Microphone access granted', 'success');
+
+    // Set up audio context for visualization + processing
+    audioContext = new AudioContext({ sampleRate: 24000 });
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+
+    // Connect WebSocket
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${location.host}/voice`);
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen = () => {
+      log('WebSocket connected, sending config...');
+      ws.send(JSON.stringify({
+        type: 'start',
+        voice: voiceSelect.value,
+        persona: personaInput.value,
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      if (typeof event.data === 'string') {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'session_created') {
+          log(`Session created: ${msg.id}`, 'success');
+        } else if (msg.type === 'connected') {
+          setStatus('🟢 Connected — Speak now', 'active');
+          log('Connected to PersonaPlex backend', 'success');
+          startAudioCapture();
+        } else if (msg.type === 'error') {
+          log(`Backend: ${msg.message}`, 'error');
+          setStatus('Backend unavailable', 'error');
+        } else if (msg.type === 'backend_disconnected') {
+          log('Backend disconnected', 'error');
+          setStatus('Backend disconnected', 'error');
+        }
+      } else {
+        // Binary audio from PersonaPlex — play it
+        playAudio(event.data);
+        log('← Audio received', 'audio');
+      }
+    };
+
+    ws.onclose = () => {
+      log('WebSocket closed');
+      if (isActive) endCall();
+    };
+
+    ws.onerror = (e) => {
+      log('WebSocket error', 'error');
+      setStatus('Connection error', 'error');
+    };
+
+    isActive = true;
+    callBtn.textContent = 'End Call';
+    callBtn.className = 'call-btn end';
+    startVisualization();
+
+  } catch (e) {
+    log(`Error: ${e.message}`, 'error');
+    setStatus('Failed to start', 'error');
+  }
+}
+
+function startAudioCapture() {
+  if (!audioContext || !mediaStream) return;
+
+  // Use ScriptProcessorNode to capture raw PCM and send to backend
+  const source = audioContext.createMediaStreamSource(mediaStream);
+  processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+  processor.onaudioprocess = (e) => {
+    if (ws?.readyState === WebSocket.OPEN) {
+      const float32 = e.inputBuffer.getChannelData(0);
+      // Convert to 16-bit PCM
+      const int16 = new Int16Array(float32.length);
+      for (let i = 0; i < float32.length; i++) {
+        int16[i] = Math.max(-32768, Math.min(32767, Math.floor(float32[i] * 32768)));
+      }
+      ws.send(int16.buffer);
+    }
+  };
+
+  source.connect(processor);
+  processor.connect(audioContext.destination);
+}
+
+async function playAudio(arrayBuffer) {
+  try {
+    if (!audioContext) return;
+    // Assume 16-bit PCM mono 24kHz from PersonaPlex
+    const int16 = new Int16Array(arrayBuffer);
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) {
+      float32[i] = int16[i] / 32768;
+    }
+    const buffer = audioContext.createBuffer(1, float32.length, 24000);
+    buffer.getChannelData(0).set(float32);
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+    source.start();
+  } catch (e) {
+    // Silently handle audio playback issues
+  }
+}
+
+function endCall() {
+  isActive = false;
+  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+  if (processor) { try { processor.disconnect(); } catch(e) {} processor = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (audioContext) { try { audioContext.close(); } catch(e) {} audioContext = null; }
+  analyser = null;
+
+  setStatus('Ready — click Start Call', 'idle');
+  callBtn.textContent = 'Start Call';
+  callBtn.className = 'call-btn start';
+  log('Call ended');
+  clearCanvas();
+}
+
+// Audio visualizer
+function startVisualization() {
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+
+  function draw() {
+    if (!isActive) return;
+    requestAnimationFrame(draw);
+    analyser.getByteFrequencyData(dataArray);
+
+    ctx.fillStyle = '#111114';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let x = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const barHeight = (dataArray[i] / 255) * canvas.height;
+      const gradient = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
+      gradient.addColorStop(0, '#c026d3');
+      gradient.addColorStop(1, '#7c3aed');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+      x += barWidth;
+    }
+  }
+  draw();
+}
+
+function clearCanvas() {
+  ctx.fillStyle = '#111114';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// Config management
+function loadConfig() {
+  const saved = JSON.parse(localStorage.getItem('voice_engine_config') || '{}');
+  if (saved.backendUrl) document.getElementById('backendUrl').value = saved.backendUrl;
+  if (saved.hfToken) document.getElementById('hfToken').value = saved.hfToken;
+}
+
+function saveConfig() {
+  const config = {
+    backendUrl: document.getElementById('backendUrl').value.trim(),
+    hfToken: document.getElementById('hfToken').value.trim(),
+  };
+  localStorage.setItem('voice_engine_config', JSON.stringify(config));
+  document.getElementById('configStatus').innerHTML = '<span style="color:#22c55e">✓ Config saved</span>';
+  setTimeout(() => document.getElementById('configStatus').textContent = '', 2000);
+}
+
+async function testConnection() {
+  const statusEl = document.getElementById('configStatus');
+  statusEl.innerHTML = '<span style="color:#c026d3">Testing...</span>';
+
+  // Test local voice engine
+  try {
+    const r = await fetch('/api/health');
+    if (r.ok) {
+      const data = await r.json();
+      statusEl.innerHTML = `<span style="color:#22c55e">✓ Voice Engine OK — ${data.activeSessions} sessions</span>`;
+      return;
+    }
+  } catch(e) {}
+
+  // Test PersonaPlex backend directly
+  const backendUrl = document.getElementById('backendUrl').value.trim();
+  if (backendUrl) {
+    try {
+      const r = await fetch(backendUrl, { mode: 'no-cors' });
+      statusEl.innerHTML = '<span style="color:#f59e0b">⚠ PersonaPlex reachable (CORS may block — use Voice Engine relay)</span>';
+      return;
+    } catch(e) {}
+  }
+
+  statusEl.innerHTML = '<span style="color:#ef4444">✗ Cannot connect — is the server running?</span>';
+}
+
+// Init
+canvas.width = canvas.offsetWidth * 2;
+canvas.height = canvas.offsetHeight * 2;
+ctx.scale(2, 2);
+clearCanvas();
+loadVoices();
+loadConfig();
+</script>
+</body>
+</html>
