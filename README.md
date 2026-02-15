@@ -1,75 +1,88 @@
-# Voice Engine
+# PersonaPlex Voice Engine
 
-Modular real-time voice conversation module powered by NVIDIA PersonaPlex.
+> Self-hosted real-time voice AI powered by [NVIDIA PersonaPlex](https://github.com/NVIDIA/personaplex). One-click deploy to RunPod.
 
-## What This Is
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Node](https://img.shields.io/badge/node-%3E%3D18-green)
 
-A standalone voice server that wraps PersonaPlex (7B full-duplex speech-to-speech model) into a clean API. Any app can plug in to give AI agents real-time voice capabilities.
+## Features
+
+- 🎙️ **Real-time voice conversations** — full-duplex audio streaming
+- 🎭 **Persona presets** — Assistant, Medical, Bank, Astronaut, or custom
+- 🗣️ **Multiple voices** — 12+ natural and variety voices
+- ⚡ **One-click deploy** — single script sets up everything on RunPod
+- 🎨 **Clean web UI** — ElevenLabs-inspired minimal interface
+- 🔌 **Relay server** — bridges browser WebSocket to PersonaPlex backend
+- 🐳 **Docker support** — containerized deployment option
+- 🤖 **Agent-friendly** — comprehensive setup docs for AI agents
+
+## Quick Start
+
+### One-liner (RunPod)
+
+SSH into a RunPod GPU pod (A40 48GB+ recommended) and run:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/nikolateslasagent/voice-engine/main/setup.sh | bash
+```
+
+This installs everything and starts the PersonaPlex server on port 8998.
+
+### Manual Setup
+
+See [SETUP.md](SETUP.md) for detailed step-by-step instructions (agent-friendly).
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────┐
-│  Client (Browser / Mobile)          │
-│  WebRTC / WebSocket audio stream    │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│  Voice Engine Server (Node.js)      │
-│  - Session management               │
-│  - Voice/persona routing             │
-│  - WebSocket relay                   │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│  PersonaPlex Backend (Python/GPU)   │
-│  - moshi.server on port 8998        │
-│  - Full-duplex speech-to-speech     │
-│  - Voice conditioning + role prompts │
-└─────────────────────────────────────┘
+┌──────────────┐     WebSocket      ┌──────────────┐     WebSocket      ┌──────────────────┐
+│   Browser    │ ◄──────────────► │ Voice Engine │ ◄──────────────►  │   PersonaPlex    │
+│   (Web UI)   │    Audio PCM16    │  (Relay)     │    Audio PCM16    │  (NVIDIA Model)  │
+│   port 3460  │                   │  port 3460   │                   │   port 8998      │
+└──────────────┘                   └──────────────┘                   └──────────────────┘
+        │                                │
+        │  REST API                      │  Serves static UI
+        │  /api/voices                   │  from public/
+        │  /api/session                  │
+        │  /api/health                   │
 ```
 
-## Deployment Options
+## Local Development
 
-1. **Local GPU** — RTX 4090 / 3090 (24GB VRAM)
-2. **RunPod** — A40 ($0.39/hr) or any 24GB+ GPU pod
-3. **Any cloud** — Anything with CUDA + 24GB VRAM
+```bash
+# Install dependencies
+npm install
+
+# Set backend URL (default: localhost:8998)
+export PERSONAPLEX_HOST=localhost
+export PERSONAPLEX_PORT=8998
+
+# Start relay server
+npm start
+
+# Open http://localhost:3460
+```
+
+## Tech Stack
+
+- **Backend Model:** NVIDIA PersonaPlex 7B (Moshi-based)
+- **Relay Server:** Node.js, Express, ws
+- **Frontend:** Vanilla HTML/CSS/JS, Inter font
+- **Audio:** PCM16 @ 24kHz, Web Audio API
+- **Infra:** RunPod GPU pods, Docker
 
 ## API
 
-### REST
-- `GET /voices` — List available voices
-- `POST /session` — Create voice session (persona + voice)
-- `DELETE /session/:id` — End session
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/health` | GET | Health check + active sessions |
+| `/api/voices` | GET | List available voices |
+| `/api/session` | POST | Create voice session |
+| `/api/session/:id` | GET | Get session info |
+| `/api/sessions` | GET | List active sessions |
+| `/api/session/:id` | DELETE | End session |
+| `/voice` | WS | Audio streaming endpoint |
 
-### WebSocket
-- `ws://host:3460/voice` — Bidirectional audio stream (Opus codec)
+## License
 
-## Quick Start
-
-```bash
-# 1. Start PersonaPlex backend (GPU machine)
-cd personaplex/
-pip install moshi/.
-SSL_DIR=$(mktemp -d); HF_TOKEN=xxx python -m moshi.server --ssl "$SSL_DIR"
-
-# 2. Start Voice Engine relay
-cd voice-engine/
-npm install
-PERSONAPLEX_HOST=localhost:8998 npm start
-
-# 3. Open client or integrate into your app
-```
-
-## Integration
-
-```javascript
-// Connect from any web app
-const ws = new WebSocket('ws://localhost:3460/voice');
-ws.send(JSON.stringify({
-  type: 'start',
-  voice: 'NATF2',
-  persona: 'You are a helpful AI assistant named Nova.'
-}));
-// Then stream audio frames bidirectionally
-```
+MIT

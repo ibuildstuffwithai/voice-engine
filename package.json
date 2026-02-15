@@ -1,15 +1,18 @@
 {
-  "name": "voice-engine",
-  "version": "0.1.0",
-  "description": "Modular real-time voice conversation engine powered by PersonaPlex",
+  "name": "personaplex-voice-engine",
+  "version": "1.0.0",
+  "description": "Self-hosted real-time voice AI relay — bridges browser audio to NVIDIA PersonaPlex",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node --watch server.js"
   },
+  "keywords": ["voice", "ai", "personaplex", "nvidia", "realtime", "websocket"],
+  "author": "nikolateslasagent",
+  "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "ws": "^8.16.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "ws": "^8.16.0"
   }
 }

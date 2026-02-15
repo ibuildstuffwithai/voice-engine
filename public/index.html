@@ -3,359 +3,416 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Voice Engine — Test Console</title>
+<title>PersonaPlex Voice Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', -apple-system, sans-serif; background: #0e0e10; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
-  h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
-  .subtitle { color: #888; font-size: 14px; margin-bottom: 40px; }
-  .card { background: #1a1a1e; border: 1px solid #2a2a2e; border-radius: 16px; padding: 32px; width: 100%; max-width: 480px; margin-bottom: 20px; }
-  .card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 16px; }
-  label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
-  select, textarea { width: 100%; background: #111114; border: 1px solid #333; border-radius: 8px; color: #e0e0e0; padding: 10px 12px; font-size: 14px; font-family: inherit; margin-bottom: 16px; }
-  textarea { height: 80px; resize: vertical; }
-  select:focus, textarea:focus { outline: none; border-color: #c026d3; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#fafafa;color:#171717;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input,select,textarea{font-family:inherit;outline:none}
 
-  .call-btn {
-    width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
-    cursor: pointer; transition: all 0.2s;
-  }
-  .call-btn.start { background: #c026d3; color: white; }
-  .call-btn.start:hover { background: #a020b0; }
-  .call-btn.end { background: #ef4444; color: white; }
-  .call-btn.end:hover { background: #dc2626; }
-  .call-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Header */
+.header{width:100%;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e5e5;background:#fff}
+.header h1{font-size:18px;font-weight:600;letter-spacing:-0.3px}
+.header h1 span{color:#737373;font-weight:400}
+.gear-btn{width:36px;height:36px;border-radius:8px;background:transparent;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.gear-btn:hover{background:#f5f5f5}
+.gear-btn svg{width:20px;height:20px;color:#525252}
 
-  .status { text-align: center; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; }
-  .status.idle { background: #1a1a1e; color: #666; }
-  .status.connecting { background: #1a1520; color: #c026d3; }
-  .status.active { background: #0a1a0a; color: #22c55e; }
-  .status.error { background: #1a0a0a; color: #ef4444; }
+/* Main */
+.main{width:100%;max-width:520px;padding:40px 24px 60px}
 
-  .visualizer { width: 100%; height: 60px; border-radius: 8px; background: #111114; margin-bottom: 16px; }
+/* Card */
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:16px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 
-  .log { background: #111114; border-radius: 8px; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #666; max-height: 200px; overflow-y: auto; }
-  .log .entry { margin-bottom: 4px; }
-  .log .entry.info { color: #888; }
-  .log .entry.success { color: #22c55e; }
-  .log .entry.error { color: #ef4444; }
-  .log .entry.audio { color: #c026d3; }
+/* Form group */
+.fg{margin-bottom:24px}
+.fg label{display:block;font-size:13px;font-weight:500;color:#525252;margin-bottom:8px;letter-spacing:0.01em}
+.fg select,.fg textarea,.fg input[type=text],.fg input[type=password]{width:100%;padding:10px 14px;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;background:#fafafa;transition:border .15s,box-shadow .15s;color:#171717}
+.fg select:focus,.fg textarea:focus,.fg input:focus{border-color:#a3a3a3;box-shadow:0 0 0 3px rgba(0,0,0,.04)}
+.fg textarea{resize:vertical;min-height:72px}
+.fg .hint{font-size:12px;color:#a3a3a3;margin-top:6px}
+
+/* Presets */
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.preset-btn{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;background:#f5f5f5;color:#525252;border:1px solid #e5e5e5;transition:all .15s}
+.preset-btn:hover{background:#e5e5e5;color:#171717}
+.preset-btn.active{background:#171717;color:#fff;border-color:#171717}
+
+/* Connect button */
+.connect-btn{width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:600;background:#171717;color:#fff;transition:all .15s;letter-spacing:-0.01em}
+.connect-btn:hover{background:#333}
+.connect-btn:disabled{background:#d4d4d4;color:#737373;cursor:not-allowed}
+.connect-btn.active{background:#dc2626}
+.connect-btn.active:hover{background:#b91c1c}
+.connect-btn.connecting{background:#737373;pointer-events:none}
+
+/* Status */
+.status{text-align:center;margin-bottom:20px}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.status-text{font-size:13px;color:#737373;vertical-align:middle}
+.status-dot.disconnected{background:#d4d4d4}
+.status-dot.connecting{background:#f59e0b;animation:pulse 1s infinite}
+.status-dot.connected{background:#22c55e}
+.status-dot.error{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Call UI */
+.call-ui{display:none;text-align:center}
+.call-ui.visible{display:block}
+.timer{font-size:32px;font-weight:600;letter-spacing:-0.5px;margin:16px 0 8px;font-variant-numeric:tabular-nums}
+.visualizer{height:64px;display:flex;align-items:center;justify-content:center;gap:3px;margin:20px 0}
+.visualizer .bar{width:4px;border-radius:2px;background:#171717;transition:height .08s;height:8px}
+.call-actions{display:flex;gap:12px;justify-content:center;margin-top:24px}
+.call-action-btn{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.mute-btn{background:#f5f5f5;border:1px solid #e5e5e5}
+.mute-btn:hover{background:#e5e5e5}
+.mute-btn.muted{background:#fecaca;border-color:#fca5a5}
+.mute-btn.muted svg{color:#dc2626}
+.end-btn{background:#dc2626;border:none}
+.end-btn:hover{background:#b91c1c}
+.end-btn svg{color:#fff}
+
+/* Settings Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:100;backdrop-filter:blur(2px)}
+.overlay.visible{display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:16px;padding:32px;width:90%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+.modal h2{font-size:18px;font-weight:600;margin-bottom:24px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:28px}
+.btn-secondary{padding:10px 20px;border-radius:10px;font-size:14px;font-weight:500;background:#f5f5f5;color:#525252;border:1px solid #e5e5e5}
+.btn-secondary:hover{background:#e5e5e5}
+.btn-primary{padding:10px 20px;border-radius:10px;font-size:14px;font-weight:500;background:#171717;color:#fff}
+.btn-primary:hover{background:#333}
+
+/* Responsive */
+@media(max-width:480px){.main{padding:24px 16px}.card{padding:24px}}
 </style>
 </head>
 <body>
 
-<h1>🎙️ Voice Engine</h1>
-<p class="subtitle">Real-time voice conversations with AI agents</p>
+<div class="header">
+  <h1>PersonaPlex <span>Voice Engine</span></h1>
+  <button class="gear-btn" onclick="openSettings()" title="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+  </button>
+</div>
 
-<div class="card">
-  <h2>Backend Connection</h2>
-  <label>PersonaPlex Server URL</label>
-  <input type="text" id="backendUrl" placeholder="https://your-runpod-id-8998.proxy.runpod.net" value="" style="width:100%;background:#111114;border:1px solid #333;border-radius:8px;color:#e0e0e0;padding:10px 12px;font-size:14px;font-family:inherit;margin-bottom:12px;">
-  <label>HuggingFace Token (for model download)</label>
-  <input type="text" id="hfToken" placeholder="hf_xxxxx" value="" style="width:100%;background:#111114;border:1px solid #333;border-radius:8px;color:#e0e0e0;padding:10px 12px;font-size:14px;font-family:inherit;margin-bottom:12px;">
-  <div style="display:flex;gap:8px">
-    <button onclick="saveConfig()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#c026d3;color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Save Config</button>
-    <button onclick="testConnection()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#1a1a1e;border:1px solid #333;color:#e0e0e0;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Test Connection</button>
+<div class="main">
+  <!-- Setup form -->
+  <div class="card" id="setupCard">
+    <div class="status">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-text" id="statusText">Disconnected</span>
+    </div>
+
+    <div class="fg">
+      <label>Persona</label>
+      <textarea id="personaInput" placeholder="Describe the AI persona...">You are a friendly and helpful AI assistant with a warm personality.</textarea>
+      <div class="presets" id="presets">
+        <button class="preset-btn active" data-persona="You are a friendly and helpful AI assistant with a warm personality.">Assistant</button>
+        <button class="preset-btn" data-persona="You are a medical receptionist at a clinic. You help patients schedule appointments, answer basic questions about office hours, and triage urgency. Be calm and professional.">Medical</button>
+        <button class="preset-btn" data-persona="You are a bank customer service agent. Help with account inquiries, transfers, and card issues. Verify identity before sharing sensitive info. Be professional and secure.">Bank</button>
+        <button class="preset-btn" data-persona="You are an astronaut aboard the ISS. You describe what you see in space and answer questions about life in zero gravity. Be awe-inspired and scientific.">Astronaut</button>
+        <button class="preset-btn" data-persona="">Custom</button>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>Voice</label>
+      <select id="voiceSelect"></select>
+    </div>
+
+    <button class="connect-btn" id="connectBtn" onclick="toggleCall()">Start Call</button>
   </div>
-  <div id="configStatus" style="margin-top:8px;font-size:12px;color:#666;text-align:center;"></div>
+
+  <!-- Call UI (shown when connected) -->
+  <div class="call-ui" id="callUI">
+    <div class="status">
+      <span class="status-dot connected" id="callStatusDot"></span>
+      <span class="status-text" id="callStatusText">Connected</span>
+    </div>
+    <div class="timer" id="timer">00:00</div>
+    <div class="visualizer" id="visualizer"></div>
+    <div style="font-size:13px;color:#a3a3a3;margin-bottom:4px" id="callPersonaLabel"></div>
+    <div style="font-size:15px;font-weight:500;margin-bottom:16px" id="callVoiceLabel"></div>
+    <div class="call-actions">
+      <button class="call-action-btn mute-btn" id="muteBtn" onclick="toggleMute()" title="Mute">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
+      <button class="call-action-btn end-btn" onclick="endCall()" title="End Call">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7 2 2 0 011.72 2v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 002.59 3.4z"/></svg>
+      </button>
+    </div>
+  </div>
 </div>
 
-<div class="card">
-  <h2>Voice & Persona</h2>
-  <label>Voice</label>
-  <select id="voiceSelect"></select>
-  <label>Persona</label>
-  <textarea id="personaInput">You are a wise and friendly AI assistant. Answer questions in a clear and engaging way.</textarea>
-</div>
-
-<div class="card">
-  <h2>Session</h2>
-  <div class="status idle" id="status">Ready — click Start Call</div>
-  <canvas class="visualizer" id="visualizer"></canvas>
-  <button class="call-btn start" id="callBtn" onclick="toggleCall()">Start Call</button>
-</div>
-
-<div class="card">
-  <h2>Log</h2>
-  <div class="log" id="log"></div>
+<!-- Settings Modal -->
+<div class="overlay" id="settingsOverlay" onclick="closeSettingsOutside(event)">
+  <div class="modal">
+    <h2>Settings</h2>
+    <div class="fg">
+      <label>PersonaPlex Server URL</label>
+      <input type="text" id="settingsServerUrl" placeholder="ws://localhost:8998 or wss://pod-id-8998.proxy.runpod.net">
+      <div class="hint">WebSocket URL of the PersonaPlex backend</div>
+    </div>
+    <div class="fg">
+      <label>HuggingFace Token</label>
+      <input type="password" id="settingsHfToken" placeholder="hf_...">
+      <div class="hint">Required for model access on RunPod</div>
+    </div>
+    <div class="fg">
+      <label>RunPod API Key</label>
+      <input type="password" id="settingsRunpodKey" placeholder="rp_...">
+      <div class="hint">Optional — for programmatic pod management</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
+      <button class="btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
 </div>
 
 <script>
-const voiceSelect = document.getElementById('voiceSelect');
-const personaInput = document.getElementById('personaInput');
-const callBtn = document.getElementById('callBtn');
-const statusEl = document.getElementById('status');
-const logEl = document.getElementById('log');
-const canvas = document.getElementById('visualizer');
-const ctx = canvas.getContext('2d');
-
+// State
 let ws = null;
-let mediaStream = null;
 let audioContext = null;
-let analyser = null;
-let processor = null;
-let isActive = false;
+let mediaStream = null;
+let scriptProcessor = null;
+let timerInterval = null;
+let callSeconds = 0;
+let isMuted = false;
+let isConnected = false;
 
-// Load voices
-async function loadVoices() {
-  try {
-    const res = await fetch('/api/voices');
-    const voices = await res.json();
-    Object.entries(voices).forEach(([category, list]) => {
-      const group = document.createElement('optgroup');
-      group.label = category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      list.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v.id;
-        opt.textContent = `${v.name} (${v.id}) — ${v.style}`;
-        if (v.id === 'NATF2') opt.selected = true;
-        group.appendChild(opt);
-      });
-      voiceSelect.appendChild(group);
-    });
-  } catch (e) {
-    log('Failed to load voices', 'error');
+// Settings
+function loadSettings() {
+  return JSON.parse(localStorage.getItem('ve_settings') || '{}');
+}
+function openSettings() {
+  const s = loadSettings();
+  document.getElementById('settingsServerUrl').value = s.serverUrl || '';
+  document.getElementById('settingsHfToken').value = s.hfToken || '';
+  document.getElementById('settingsRunpodKey').value = s.runpodKey || '';
+  document.getElementById('settingsOverlay').classList.add('visible');
+}
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('visible'); }
+function closeSettingsOutside(e) { if (e.target === e.currentTarget) closeSettings(); }
+function saveSettings() {
+  localStorage.setItem('ve_settings', JSON.stringify({
+    serverUrl: document.getElementById('settingsServerUrl').value.trim(),
+    hfToken: document.getElementById('settingsHfToken').value.trim(),
+    runpodKey: document.getElementById('settingsRunpodKey').value.trim(),
+  }));
+  closeSettings();
+}
+
+// Voices
+const voices = [
+  { id: 'NATF0', name: 'Nova — Natural Female', group: 'Natural' },
+  { id: 'NATF1', name: 'Aria — Natural Female', group: 'Natural' },
+  { id: 'NATF2', name: 'Luna — Natural Female', group: 'Natural' },
+  { id: 'NATF3', name: 'Sage — Natural Female', group: 'Natural' },
+  { id: 'NATM0', name: 'Atlas — Natural Male', group: 'Natural' },
+  { id: 'NATM1', name: 'Orion — Natural Male', group: 'Natural' },
+  { id: 'NATM2', name: 'Felix — Natural Male', group: 'Natural' },
+  { id: 'NATM3', name: 'Reed — Natural Male', group: 'Natural' },
+  { id: 'VARF0', name: 'Vox-F0 — Variety Female', group: 'Variety' },
+  { id: 'VARF1', name: 'Vox-F1 — Variety Female', group: 'Variety' },
+  { id: 'VARM0', name: 'Vox-M0 — Variety Male', group: 'Variety' },
+  { id: 'VARM1', name: 'Vox-M1 — Variety Male', group: 'Variety' },
+];
+
+function populateVoices() {
+  const sel = document.getElementById('voiceSelect');
+  voices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.id; opt.textContent = v.name;
+    sel.appendChild(opt);
+  });
+  sel.value = 'NATF2';
+}
+
+// Presets
+document.getElementById('presets').addEventListener('click', e => {
+  const btn = e.target.closest('.preset-btn');
+  if (!btn) return;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const p = btn.dataset.persona;
+  document.getElementById('personaInput').value = p;
+  if (p === '') document.getElementById('personaInput').focus();
+});
+
+// Visualizer
+function initVisualizer() {
+  const container = document.getElementById('visualizer');
+  container.innerHTML = '';
+  for (let i = 0; i < 24; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    container.appendChild(bar);
   }
 }
 
-function log(msg, type = 'info') {
-  const entry = document.createElement('div');
-  entry.className = `entry ${type}`;
-  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-  logEl.appendChild(entry);
-  logEl.scrollTop = logEl.scrollHeight;
+function animateVisualizer() {
+  if (!isConnected) return;
+  const bars = document.querySelectorAll('.visualizer .bar');
+  bars.forEach(bar => {
+    const h = 6 + Math.random() * 42;
+    bar.style.height = h + 'px';
+  });
+  requestAnimationFrame(() => setTimeout(animateVisualizer, 80));
 }
 
-function setStatus(text, cls) {
-  statusEl.textContent = text;
-  statusEl.className = `status ${cls}`;
+// Timer
+function startTimer() {
+  callSeconds = 0;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => { callSeconds++; updateTimerDisplay(); }, 1000);
+}
+function stopTimer() { clearInterval(timerInterval); }
+function updateTimerDisplay() {
+  const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+  const s = String(callSeconds % 60).padStart(2, '0');
+  document.getElementById('timer').textContent = m + ':' + s;
 }
 
+// Status
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot ' + state;
+  txt.textContent = text;
+}
+
+// Call
 async function toggleCall() {
-  if (isActive) {
-    endCall();
-  } else {
-    startCall();
-  }
-}
+  if (isConnected) { endCall(); return; }
+  const btn = document.getElementById('connectBtn');
+  btn.classList.add('connecting');
+  btn.textContent = 'Connecting...';
+  setStatus('connecting', 'Connecting...');
 
-async function startCall() {
   try {
-    setStatus('Requesting microphone...', 'connecting');
-    log('Requesting microphone access...');
-
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: { sampleRate: 24000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
-    });
-    log('Microphone access granted', 'success');
-
-    // Set up audio context for visualization + processing
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioContext = new AudioContext({ sampleRate: 24000 });
     const source = audioContext.createMediaStreamSource(mediaStream);
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
+    scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
 
-    // Connect WebSocket
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${protocol}//${location.host}/voice`);
-    ws.binaryType = 'arraybuffer';
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = proto + '//' + location.host + '/voice';
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      log('WebSocket connected, sending config...');
       ws.send(JSON.stringify({
         type: 'start',
-        voice: voiceSelect.value,
-        persona: personaInput.value,
+        voice: document.getElementById('voiceSelect').value,
+        persona: document.getElementById('personaInput').value,
       }));
     };
 
-    ws.onmessage = (event) => {
-      if (typeof event.data === 'string') {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'session_created') {
-          log(`Session created: ${msg.id}`, 'success');
-        } else if (msg.type === 'connected') {
-          setStatus('🟢 Connected — Speak now', 'active');
-          log('Connected to PersonaPlex backend', 'success');
-          startAudioCapture();
+    ws.onmessage = (evt) => {
+      if (typeof evt.data === 'string') {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'connected' || msg.type === 'session_created') {
+          onConnected();
         } else if (msg.type === 'error') {
-          log(`Backend: ${msg.message}`, 'error');
-          setStatus('Backend unavailable', 'error');
+          setStatus('error', msg.message || 'Error');
+          endCall();
         } else if (msg.type === 'backend_disconnected') {
-          log('Backend disconnected', 'error');
-          setStatus('Backend disconnected', 'error');
+          setStatus('error', 'Backend disconnected');
+          endCall();
         }
       } else {
-        // Binary audio from PersonaPlex — play it
-        playAudio(event.data);
-        log('← Audio received', 'audio');
+        // Play incoming audio
+        playAudioData(evt.data);
       }
     };
 
-    ws.onclose = () => {
-      log('WebSocket closed');
-      if (isActive) endCall();
-    };
+    ws.onerror = () => { setStatus('error', 'Connection failed'); resetUI(); };
+    ws.onclose = () => { if (isConnected) endCall(); };
 
-    ws.onerror = (e) => {
-      log('WebSocket error', 'error');
-      setStatus('Connection error', 'error');
-    };
-
-    isActive = true;
-    callBtn.textContent = 'End Call';
-    callBtn.className = 'call-btn end';
-    startVisualization();
-
-  } catch (e) {
-    log(`Error: ${e.message}`, 'error');
-    setStatus('Failed to start', 'error');
-  }
-}
-
-function startAudioCapture() {
-  if (!audioContext || !mediaStream) return;
-
-  // Use ScriptProcessorNode to capture raw PCM and send to backend
-  const source = audioContext.createMediaStreamSource(mediaStream);
-  processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-  processor.onaudioprocess = (e) => {
-    if (ws?.readyState === WebSocket.OPEN) {
-      const float32 = e.inputBuffer.getChannelData(0);
-      // Convert to 16-bit PCM
-      const int16 = new Int16Array(float32.length);
-      for (let i = 0; i < float32.length; i++) {
-        int16[i] = Math.max(-32768, Math.min(32767, Math.floor(float32[i] * 32768)));
+    // Send mic audio
+    scriptProcessor.onaudioprocess = (e) => {
+      if (!isMuted && ws && ws.readyState === WebSocket.OPEN) {
+        const input = e.inputBuffer.getChannelData(0);
+        const pcm16 = new Int16Array(input.length);
+        for (let i = 0; i < input.length; i++) {
+          pcm16[i] = Math.max(-32768, Math.min(32767, input[i] * 32768));
+        }
+        ws.send(pcm16.buffer);
       }
-      ws.send(int16.buffer);
-    }
-  };
+    };
+    source.connect(scriptProcessor);
+    scriptProcessor.connect(audioContext.destination);
 
-  source.connect(processor);
-  processor.connect(audioContext.destination);
+  } catch (err) {
+    setStatus('error', err.message || 'Microphone access denied');
+    resetUI();
+  }
 }
 
-async function playAudio(arrayBuffer) {
-  try {
-    if (!audioContext) return;
-    // Assume 16-bit PCM mono 24kHz from PersonaPlex
-    const int16 = new Int16Array(arrayBuffer);
-    const float32 = new Float32Array(int16.length);
-    for (let i = 0; i < int16.length; i++) {
-      float32[i] = int16[i] / 32768;
-    }
-    const buffer = audioContext.createBuffer(1, float32.length, 24000);
-    buffer.getChannelData(0).set(float32);
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioContext.destination);
-    source.start();
-  } catch (e) {
-    // Silently handle audio playback issues
-  }
+function onConnected() {
+  isConnected = true;
+  document.getElementById('setupCard').style.display = 'none';
+  document.getElementById('callUI').classList.add('visible');
+  document.getElementById('callPersonaLabel').textContent =
+    document.getElementById('personaInput').value.substring(0, 60) + '...';
+  const voiceSel = document.getElementById('voiceSelect');
+  document.getElementById('callVoiceLabel').textContent =
+    voiceSel.options[voiceSel.selectedIndex].textContent;
+  initVisualizer();
+  animateVisualizer();
+  startTimer();
 }
 
 function endCall() {
-  isActive = false;
-  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
-  if (processor) { try { processor.disconnect(); } catch(e) {} processor = null; }
+  isConnected = false;
+  if (ws) { try { ws.close(); } catch(e){} ws = null; }
   if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
-  if (audioContext) { try { audioContext.close(); } catch(e) {} audioContext = null; }
-  analyser = null;
-
-  setStatus('Ready — click Start Call', 'idle');
-  callBtn.textContent = 'Start Call';
-  callBtn.className = 'call-btn start';
-  log('Call ended');
-  clearCanvas();
+  if (scriptProcessor) { scriptProcessor.disconnect(); scriptProcessor = null; }
+  if (audioContext) { audioContext.close(); audioContext = null; }
+  stopTimer();
+  isMuted = false;
+  document.getElementById('muteBtn').classList.remove('muted');
+  document.getElementById('callUI').classList.remove('visible');
+  document.getElementById('setupCard').style.display = 'block';
+  resetUI();
 }
 
-// Audio visualizer
-function startVisualization() {
-  const bufferLength = analyser.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
-
-  function draw() {
-    if (!isActive) return;
-    requestAnimationFrame(draw);
-    analyser.getByteFrequencyData(dataArray);
-
-    ctx.fillStyle = '#111114';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const barWidth = (canvas.width / bufferLength) * 2.5;
-    let x = 0;
-    for (let i = 0; i < bufferLength; i++) {
-      const barHeight = (dataArray[i] / 255) * canvas.height;
-      const gradient = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
-      gradient.addColorStop(0, '#c026d3');
-      gradient.addColorStop(1, '#7c3aed');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
-      x += barWidth;
-    }
-  }
-  draw();
+function resetUI() {
+  const btn = document.getElementById('connectBtn');
+  btn.classList.remove('connecting', 'active');
+  btn.textContent = 'Start Call';
+  btn.disabled = false;
+  setStatus('disconnected', 'Disconnected');
 }
 
-function clearCanvas() {
-  ctx.fillStyle = '#111114';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+function toggleMute() {
+  isMuted = !isMuted;
+  document.getElementById('muteBtn').classList.toggle('muted', isMuted);
 }
 
-// Config management
-function loadConfig() {
-  const saved = JSON.parse(localStorage.getItem('voice_engine_config') || '{}');
-  if (saved.backendUrl) document.getElementById('backendUrl').value = saved.backendUrl;
-  if (saved.hfToken) document.getElementById('hfToken').value = saved.hfToken;
-}
-
-function saveConfig() {
-  const config = {
-    backendUrl: document.getElementById('backendUrl').value.trim(),
-    hfToken: document.getElementById('hfToken').value.trim(),
-  };
-  localStorage.setItem('voice_engine_config', JSON.stringify(config));
-  document.getElementById('configStatus').innerHTML = '<span style="color:#22c55e">✓ Config saved</span>';
-  setTimeout(() => document.getElementById('configStatus').textContent = '', 2000);
-}
-
-async function testConnection() {
-  const statusEl = document.getElementById('configStatus');
-  statusEl.innerHTML = '<span style="color:#c026d3">Testing...</span>';
-
-  // Test local voice engine
+// Audio playback
+let playbackQueue = [];
+async function playAudioData(data) {
+  if (!audioContext) return;
   try {
-    const r = await fetch('/api/health');
-    if (r.ok) {
-      const data = await r.json();
-      statusEl.innerHTML = `<span style="color:#22c55e">✓ Voice Engine OK — ${data.activeSessions} sessions</span>`;
-      return;
-    }
+    const arrayBuf = data instanceof ArrayBuffer ? data : await data.arrayBuffer();
+    const pcm16 = new Int16Array(arrayBuf);
+    const float32 = new Float32Array(pcm16.length);
+    for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768;
+    const buffer = audioContext.createBuffer(1, float32.length, 24000);
+    buffer.getChannelData(0).set(float32);
+    const src = audioContext.createBufferSource();
+    src.buffer = buffer;
+    src.connect(audioContext.destination);
+    src.start();
   } catch(e) {}
-
-  // Test PersonaPlex backend directly
-  const backendUrl = document.getElementById('backendUrl').value.trim();
-  if (backendUrl) {
-    try {
-      const r = await fetch(backendUrl, { mode: 'no-cors' });
-      statusEl.innerHTML = '<span style="color:#f59e0b">⚠ PersonaPlex reachable (CORS may block — use Voice Engine relay)</span>';
-      return;
-    } catch(e) {}
-  }
-
-  statusEl.innerHTML = '<span style="color:#ef4444">✗ Cannot connect — is the server running?</span>';
 }
 
 // Init
-canvas.width = canvas.offsetWidth * 2;
-canvas.height = canvas.offsetHeight * 2;
-ctx.scale(2, 2);
-clearCanvas();
-loadVoices();
-loadConfig();
+populateVoices();
 </script>
 </body>
 </html>
