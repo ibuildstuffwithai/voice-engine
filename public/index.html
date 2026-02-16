@@ -45,7 +45,7 @@ input,select,textarea{font-family:inherit;outline:none}
 .gear-btn svg{width:18px;height:18px;color:#999}
 
 /* Main */
-.main{width:100%;max-width:720px;padding:48px 24px 60px}
+.main{width:100%;max-width:900px;padding:48px 24px 60px}
 
 /* Card */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px 40px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
@@ -115,14 +115,14 @@ input,select,textarea{font-family:inherit;outline:none}
 
 /* Voice Grid */
 .voice-grid{display:flex;flex-direction:column;gap:16px}
-.voice-section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px}
-.voice-section{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.voice-section-label{font-size:13px;font-weight:700;letter-spacing:.04em;color:#fff;margin-bottom:4px}
+.voice-section{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
 .voice-card{display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid var(--border);border-radius:12px;background:var(--surface2);cursor:pointer;transition:all .15s;user-select:none}
 .voice-card:hover{border-color:var(--border-light);background:var(--border)}
 .voice-card.selected{border-color:var(--orange);background:var(--orange-subtle);box-shadow:0 0 0 1px var(--orange)}
 .voice-card .vc-info{flex:1;min-width:0}
-.voice-card .vc-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.voice-card .vc-style{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.voice-card .vc-name{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.voice-card .vc-style{font-size:11px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .voice-card .vc-play{width:28px;height:28px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
 .voice-card .vc-play:hover{background:var(--orange-light);transform:scale(1.1)}
 .voice-card .vc-play svg{width:12px;height:12px;color:#fff;fill:#fff}
@@ -280,10 +280,10 @@ const sel=document.getElementById('voiceSelect'),grid=document.getElementById('v
 voices.forEach(v=>{const opt=document.createElement('option');opt.value=v.id;opt.textContent=v.name;sel.appendChild(opt)});
 sel.value=selectedVoice;
 const sections=[
-{label:'♀ Natural Female',filter:v=>v.gender==='female'&&v.sample},
-{label:'♂ Natural Male',filter:v=>v.gender==='male'&&v.sample},
-{label:'♀ Variety Female',filter:v=>v.gender==='female'&&!v.sample},
-{label:'♂ Variety Male',filter:v=>v.gender==='male'&&!v.sample},
+{label:'Female',filter:v=>v.gender==='female'&&v.sample},
+{label:'Male',filter:v=>v.gender==='male'&&v.sample},
+{label:'Variety Female',filter:v=>v.gender==='female'&&!v.sample},
+{label:'Variety Male',filter:v=>v.gender==='male'&&!v.sample},
 ];
 sections.forEach(sec=>{
 const items=voices.filter(sec.filter);if(!items.length)return;
