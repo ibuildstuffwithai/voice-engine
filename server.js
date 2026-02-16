@@ -62,6 +62,84 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- REST API ---
 
+// AI Chat endpoint — uses same Anthropic API as OpenClaw
+// AI Chat — routes through OpenClaw gateway (same brain as Telegram)
+const GW_URL = 'http://127.0.0.1:18789/v1/chat/completions';
+const GW_TOKEN = 'dbf50ea8e89b36e8bf1f783dc2ea2a79ae99d11f845f58e5';
+let chatHistory = [];
+
+app.post('/api/chat', async (req, res) => {
+  const { messages, persona } = req.body;
+  if (!messages || !messages.length) return res.json({ error: 'No messages' });
+  
+  const lastMsg = messages[messages.length - 1];
+  chatHistory.push(lastMsg);
+  
+  try {
+    const resp = await fetch(GW_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GW_TOKEN}`
+      },
+      body: JSON.stringify({
+        model: 'openclaw:main',
+        max_tokens: 200,
+        messages: [
+          { role: 'system', content: persona || 'You are Nole, an AI co-founder and chief of staff helping Yasir build his company. This is a voice conversation — keep answers to 2-3 sentences max. Be concise, direct, natural.' },
+          ...chatHistory.slice(-20)
+        ]
+      })
+    });
+    const data = await resp.json();
+    
+    if (data.choices && data.choices[0]) {
+      const reply = data.choices[0].message.content;
+      chatHistory.push({ role: 'assistant', content: reply });
+      return res.json({ reply });
+    }
+    console.error('[voice-engine] AI error:', JSON.stringify(data).substring(0, 300));
+    return res.json({ error: data.error?.message || JSON.stringify(data).substring(0, 200) });
+  } catch(e) {
+    console.error('[voice-engine] fetch error:', e.message);
+    return res.json({ error: e.message });
+  }
+});
+
+// TTS endpoint — converts text to speech audio
+const { execSync } = require('child_process');
+const fs = require('fs');
+
+app.post('/api/tts', (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: 'No text' });
+  
+  const tmpFile = `/tmp/voice-tts-${Date.now()}.aiff`;
+  try {
+    // Use macOS 'say' command for TTS
+    execSync(`say -v "Alex" -o "${tmpFile}" "${text.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`, { timeout: 15000 });
+    
+    // Convert AIFF to MP3 using ffmpeg if available, otherwise send AIFF
+    const mp3File = tmpFile.replace('.aiff', '.mp3');
+    try {
+      execSync(`ffmpeg -y -i "${tmpFile}" -codec:a libmp3lame -qscale:a 4 "${mp3File}" 2>/dev/null`, { timeout: 10000 });
+      res.setHeader('Content-Type', 'audio/mpeg');
+      const audio = fs.readFileSync(mp3File);
+      res.send(audio);
+      fs.unlinkSync(mp3File);
+    } catch(e) {
+      // No ffmpeg — send AIFF directly
+      res.setHeader('Content-Type', 'audio/aiff');
+      const audio = fs.readFileSync(tmpFile);
+      res.send(audio);
+    }
+    fs.unlinkSync(tmpFile);
+  } catch(e) {
+    console.error('[voice-engine] TTS error:', e.message);
+    res.status(500).json({ error: 'TTS failed: ' + e.message });
+  }
+});
+
 // List all voices
 app.get('/api/voices', (req, res) => {
   res.json(VOICES);

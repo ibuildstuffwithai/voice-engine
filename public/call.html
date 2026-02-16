@@ -7,345 +7,324 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',system-ui,sans-serif;background:#0a0a0a;color:#f5f5f5;min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:#0a0a0a;color:#f5f5f5;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
-/* Top bar */
-.topbar{padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar{padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .topbar-left{display:flex;align-items:center;gap:10px}
 .topbar-logo{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,rgb(245,124,0),rgb(230,81,0));display:flex;align-items:center;justify-content:center}
 .topbar-logo svg{width:14px;height:14px;fill:#fff}
 .topbar-title{font-size:14px;font-weight:600;color:#8e8e93}
-.topbar-status{display:flex;align-items:center;gap:6px}
-.topbar-dot{width:8px;height:8px;border-radius:50%;background:#555}
-.topbar-dot.connecting{background:rgb(245,124,0);animation:pulse 1s infinite}
-.topbar-dot.connected{background:#34c759}
-.topbar-dot.error{background:#ff453a}
-.topbar-label{font-size:13px;color:#636366}
-.timer{font-size:13px;color:#8e8e93;font-variant-numeric:tabular-nums;font-weight:500}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#555}
+.status-dot.connected{background:#34c759}
+.status-dot.connecting{background:rgb(245,124,0);animation:blink 1s infinite}
+.status-dot.speaking{background:#5856d6;animation:blink .5s infinite}
+.status-dot.error{background:#ff453a}
+.status-label{font-size:13px;color:#636366}
+.timer{font-size:13px;color:#8e8e93;font-variant-numeric:tabular-nums}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* Main area */
-.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:0 24px}
+.main{flex:1;display:flex;flex-direction:column;padding:0 24px;overflow:hidden}
+.chat{flex:1;overflow-y:auto;padding:16px 0;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth}
+.chat::-webkit-scrollbar{width:4px}
+.chat::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
 
-/* Pulse ring */
-.pulse-container{position:relative;width:160px;height:160px;margin-bottom:40px}
-.pulse-ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(245,124,0,.2);animation:ring 2s ease-out infinite}
+.msg{display:flex;flex-direction:column;max-width:80%;animation:fadeIn .2s ease}
+.msg.ai{align-self:flex-start;align-items:flex-start}
+.msg-sender{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;padding:0 4px;color:#5856d6}
+.msg-bubble{padding:14px 20px;border-radius:18px;font-size:17px;line-height:1.6;background:#1a1a2e;border-bottom-left-radius:4px;color:#e0e0e0}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.pulse-wrap{display:flex;justify-content:center;padding:30px 0;flex-shrink:0}
+.pulse-container{position:relative;width:120px;height:120px}
+.pulse-ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(245,124,0,.1)}
+.pulse-ring.active{animation:ring 2s ease-out infinite}
 .pulse-ring:nth-child(2){animation-delay:.5s}
 .pulse-ring:nth-child(3){animation-delay:1s}
-.pulse-core{position:absolute;inset:30px;border-radius:50%;background:linear-gradient(135deg,rgb(245,124,0),rgb(230,81,0));display:flex;align-items:center;justify-content:center;box-shadow:0 0 60px rgba(245,124,0,.25)}
-.pulse-core svg{width:40px;height:40px;fill:#fff}
-.pulse-core.speaking{animation:speak-pulse .6s ease-in-out infinite alternate}
-@keyframes ring{0%{transform:scale(.8);opacity:.8}100%{transform:scale(1.6);opacity:0}}
-@keyframes speak-pulse{0%{transform:scale(1);box-shadow:0 0 60px rgba(245,124,0,.25)}100%{transform:scale(1.08);box-shadow:0 0 80px rgba(245,124,0,.4)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.pulse-core{position:absolute;inset:20px;border-radius:50%;background:linear-gradient(135deg,rgb(245,124,0),rgb(230,81,0));display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(245,124,0,.15);transition:all .3s}
+.pulse-core.speaking{transform:scale(1.1);box-shadow:0 0 60px rgba(88,86,214,.4);background:linear-gradient(135deg,#5856d6,#7c3aed)}
+.pulse-core svg{width:32px;height:32px;fill:#fff}
+@keyframes ring{0%{transform:scale(.8);opacity:.6}100%{transform:scale(1.6);opacity:0}}
 
-/* Voice label */
-.voice-name{font-size:18px;font-weight:700;color:#f5f5f5;margin-bottom:4px;text-align:center}
-.voice-sub{font-size:13px;color:#636366;margin-bottom:32px;text-align:center}
-
-/* Chat transcript */
-.chat-container{width:100%;max-width:600px;max-height:280px;overflow-y:auto;margin-bottom:32px;padding:0 8px;scroll-behavior:smooth}
-.chat-container::-webkit-scrollbar{width:4px}
-.chat-container::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
-.chat-msg{margin-bottom:16px;display:flex;flex-direction:column}
-.chat-msg.user{align-items:flex-end}
-.chat-msg.ai{align-items:flex-start}
-.chat-sender{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-.chat-msg.user .chat-sender{color:rgb(245,124,0)}
-.chat-msg.ai .chat-sender{color:#34c759}
-.chat-bubble{max-width:85%;padding:12px 18px;border-radius:16px;font-size:17px;font-weight:500;line-height:1.5}
-.chat-msg.user .chat-bubble{background:#1c1c1e;border-bottom-right-radius:4px;color:#f5f5f5}
-.chat-msg.ai .chat-bubble{background:#1a1a2e;border-bottom-left-radius:4px;color:#e0e0e0}
-.chat-typing{display:flex;gap:4px;padding:12px 18px}
-.chat-typing span{width:6px;height:6px;border-radius:50%;background:#636366;animation:typing .8s ease-in-out infinite}
-.chat-typing span:nth-child(2){animation-delay:.15s}
-.chat-typing span:nth-child(3){animation-delay:.3s}
-@keyframes typing{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
-
-/* Bottom bar */
-.bottombar{padding:20px 24px 32px;display:flex;align-items:center;justify-content:center;gap:20px;flex-shrink:0}
-.mute-btn{width:56px;height:56px;border-radius:50%;background:#1c1c1e;border:1px solid #2a2a2e;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
-.mute-btn:hover{background:#2a2a2e}
-.mute-btn svg{width:22px;height:22px;color:#8e8e93}
-.mute-btn.muted{background:rgba(255,69,58,.15);border-color:rgba(255,69,58,.3)}
-.mute-btn.muted svg{color:#ff453a}
-.end-btn{padding:16px 48px;border-radius:50px;background:#ff453a;border:none;font-size:16px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;letter-spacing:.02em}
+.bottombar{padding:16px 24px 28px;display:flex;align-items:center;justify-content:center;gap:16px;flex-shrink:0}
+.mic-btn{width:60px;height:60px;border-radius:50%;background:#1c1c1e;border:2px solid #333;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.mic-btn:hover{background:#2a2a2e}
+.mic-btn.active{background:rgba(52,199,89,.15);border-color:#34c759}
+.mic-btn.active svg{color:#34c759}
+.mic-btn.muted svg{color:#ff453a}
+.mic-btn svg{width:24px;height:24px;color:#8e8e93}
+.end-btn{padding:14px 40px;border-radius:50px;background:#ff453a;border:none;font-family:inherit;font-size:15px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s}
 .end-btn:hover{background:#dc2626;transform:scale(1.03)}
-
-/* Connecting state */
-.connecting-text{font-size:15px;color:#636366;text-align:center;margin-bottom:24px}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div class="topbar-left">
-    <div class="topbar-logo">
-      <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2" fill="none" stroke="#fff" stroke-width="2"/></svg>
-    </div>
+    <div class="topbar-logo"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2" fill="none" stroke="#fff" stroke-width="2"/></svg></div>
     <span class="topbar-title">OpenClaw Voice</span>
   </div>
-  <div class="topbar-status">
-    <div class="topbar-dot connecting" id="statusDot"></div>
-    <span class="topbar-label" id="statusLabel">Connecting...</span>
-    <span class="timer" id="timer"></span>
+  <div class="topbar-right">
+    <div class="status-dot connecting" id="statusDot"></div>
+    <span class="status-label" id="statusLabel">Connecting...</span>
+    <span class="timer" id="timer">00:00</span>
   </div>
 </div>
 
-<div class="main">
-  <div class="pulse-container" id="pulseContainer">
-    <div class="pulse-ring"></div>
-    <div class="pulse-ring"></div>
-    <div class="pulse-ring"></div>
-    <div class="pulse-core" id="pulseCore">
-      <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2" fill="none" stroke="#fff" stroke-width="2"/><line x1="12" y1="19" x2="12" y2="23" stroke="#fff" stroke-width="2"/></svg>
-    </div>
+<div class="main"><div class="chat" id="chat"></div></div>
+
+<div class="pulse-wrap">
+  <div class="pulse-container">
+    <div class="pulse-ring active"></div>
+    <div class="pulse-ring active"></div>
+    <div class="pulse-ring active"></div>
+    <div class="pulse-core" id="pulseCore"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2" fill="none" stroke="#fff" stroke-width="2"/></svg></div>
   </div>
-
-  <div class="voice-name" id="voiceName">Connecting...</div>
-  <div class="voice-sub" id="voiceSub">OpenClaw Voice • PersonaPlex</div>
-
-  <div class="chat-container" id="chatContainer"></div>
 </div>
 
 <div class="bottombar">
-  <button class="mute-btn" id="muteBtn" onclick="toggleMute()" title="Mute">
+  <button class="mic-btn active" id="micBtn" onclick="toggleMic()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
   </button>
   <button class="end-btn" onclick="endCall()">End Call</button>
-  <button class="mute-btn" id="speakerBtn" onclick="toggleSpeaker()" title="Speaker" style="opacity:.5;pointer-events:none">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
-  </button>
 </div>
 
 <script>
-// Get params from URL
+// ===== CONFIG =====
 const params = new URLSearchParams(location.search);
 const voice = params.get('voice') || 'NATM2';
-const persona = params.get('persona') || 'You are a friendly and helpful AI assistant with a warm personality.';
-const voiceNames = {NATF0:'Nova',NATF1:'Aria',NATF2:'Luna',NATF3:'Sage',NATM0:'Atlas',NATM1:'Orion',NATM2:'Felix',NATM3:'Reed'};
-
-let ws = null, audioContext = null, mediaStream = null, scriptProcessor = null;
-let isMuted = false, isConnected = false;
-let timerInterval = null, callSeconds = 0;
-
-document.getElementById('voiceName').textContent = voiceNames[voice] || voice;
-
-// PersonaPlex direct connection (same protocol as their web UI)
-// Message format: [kind_byte, ...payload]
-// 0x00 = handshake, 0x01 = audio (Ogg/Opus), 0x02 = text
-
+const persona = params.get('persona') || 'You are Nole, a sharp AI co-founder. Be concise and helpful.';
 const PP_HOST = 'ymamku8yfkeqsu-8998.proxy.runpod.net';
-const PP_WS = `wss://${PP_HOST}/api/chat?voice_prompt=${encodeURIComponent(voice + '.pt')}&text_prompt=${encodeURIComponent(persona)}`;
 
-setStatus('connecting', 'Connecting...');
-connect();
+let ppWs = null;
+let micActive = true;
+let isConnected = false;
+let seconds = 0;
+let timerInterval = null;
 
-async function connect() {
-  // Connect directly to PersonaPlex (no relay)
-  try {
-    setStatus('connecting', 'Connecting to PersonaPlex...');
-    ws = new WebSocket(PP_WS);
-    ws.binaryType = 'arraybuffer';
-  } catch(err) {
-    setStatus('error', 'WS failed: ' + err.message);
-    return;
-  }
+// Text accumulation
+let currentText = '';
+let textTimeout = null;
 
-  let handshakeDone = false;
-  let oggEncoder = null;
+// Audio playback via MediaSource
+let audioElement = null;
+let mediaSource = null;
+let sourceBuffer = null;
+let audioQueue = [];
+let msReady = false;
 
-  ws.onopen = async () => {
-    setStatus('connecting', 'Waiting for handshake...');
+// Mic capture
+let audioCtx = null;
+let micStream = null;
+let scriptNode = null;
+
+// ===== CONNECT =====
+function connect() {
+  const url = `wss://${PP_HOST}/api/chat?voice_prompt=${encodeURIComponent(voice + '.pt')}&text_prompt=${encodeURIComponent(persona)}`;
+  setStatus('connecting', 'Connecting...');
+  
+  ppWs = new WebSocket(url);
+  ppWs.binaryType = 'arraybuffer';
+  
+  ppWs.onopen = () => {
+    setStatus('connecting', 'Starting session...');
+    // KEY: Send start control message [type=control(0x03), data=start(0x00)]
+    ppWs.send(new Uint8Array([0x03, 0x00]).buffer);
   };
-
-  ws.onmessage = (evt) => {
+  
+  ppWs.onmessage = (evt) => {
     const data = new Uint8Array(evt.data);
+    if (data.length === 0) return;
     const kind = data[0];
     const payload = data.slice(1);
-
-    if (kind === 0x00 && !handshakeDone) {
-      // Handshake received
-      handshakeDone = true;
-      onConnected();
+    
+    if (kind === 0x00) {
+      // Handshake received!
+      isConnected = true;
+      setStatus('connected', 'Connected — speak!');
+      startTimer();
+      initAudioPlayback();
       startMic();
       return;
     }
-
-    if (kind === 0x01) {
-      // Audio data (Ogg/Opus) — decode and play
-      playOggOpus(payload);
+    
+    if (kind === 0x01 && payload.length > 0) {
+      // Audio chunk (Ogg/Opus from PersonaPlex)
+      playAudioChunk(payload);
     }
-
+    
     if (kind === 0x02) {
       // Text token
-      const text = new TextDecoder().decode(payload);
-      handleTextToken(text);
+      handleTextToken(new TextDecoder().decode(payload));
     }
   };
-
-  ws.onerror = () => setStatus('error', 'Connection failed');
-  ws.onclose = () => { if (isConnected) endCall(); };
+  
+  ppWs.onerror = () => setStatus('error', 'Connection error');
+  ppWs.onclose = (e) => {
+    if (isConnected) {
+      setStatus('error', 'Disconnected (code ' + e.code + ')');
+    } else {
+      setStatus('error', 'Failed to connect');
+    }
+    isConnected = false;
+  };
 }
 
-// Accumulate text tokens into messages
-let currentAiText = '';
-let textTimeout = null;
+// ===== AUDIO PLAYBACK (MediaSource for streaming Ogg/Opus) =====
+function initAudioPlayback() {
+  // Try MediaSource for streaming playback
+  if (window.MediaSource && MediaSource.isTypeSupported('audio/ogg; codecs=opus')) {
+    audioElement = new Audio();
+    mediaSource = new MediaSource();
+    audioElement.src = URL.createObjectURL(mediaSource);
+    
+    mediaSource.addEventListener('sourceopen', () => {
+      try {
+        sourceBuffer = mediaSource.addSourceBuffer('audio/ogg; codecs=opus');
+        sourceBuffer.mode = 'sequence';
+        msReady = true;
+        
+        sourceBuffer.addEventListener('updateend', flushQueue);
+        flushQueue();
+      } catch(e) {
+        console.warn('SourceBuffer error:', e);
+        msReady = false;
+      }
+    });
+    
+    audioElement.play().catch(() => {});
+  }
+}
+
+function playAudioChunk(chunk) {
+  // Visual feedback
+  document.getElementById('pulseCore').classList.add('speaking');
+  clearTimeout(window._speakTimer);
+  window._speakTimer = setTimeout(() => {
+    document.getElementById('pulseCore').classList.remove('speaking');
+  }, 1500);
+  
+  if (msReady && sourceBuffer) {
+    audioQueue.push(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength));
+    flushQueue();
+    if (audioElement.paused) audioElement.play().catch(() => {});
+  }
+}
+
+function flushQueue() {
+  if (!sourceBuffer || sourceBuffer.updating || audioQueue.length === 0) return;
+  try {
+    sourceBuffer.appendBuffer(audioQueue.shift());
+  } catch(e) {
+    console.warn('appendBuffer error:', e);
+  }
+}
+
+// ===== TEXT HANDLING =====
 function handleTextToken(text) {
-  currentAiText += text;
+  currentText += text;
   clearTimeout(textTimeout);
   textTimeout = setTimeout(() => {
-    if (currentAiText.trim()) {
-      addMessage('ai', currentAiText.trim());
-      currentAiText = '';
+    if (currentText.trim()) {
+      addMessage(currentText.trim());
+      currentText = '';
     }
   }, 1500);
 }
 
-// Start microphone and encode as Ogg/Opus using MediaRecorder
+// ===== MICROPHONE (PCM → send as raw audio with kind=0x01) =====
+// PersonaPlex expects Ogg/Opus but let's try sending via MediaRecorder
+let mediaRecorder = null;
+
 async function startMic() {
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 24000, channelCount: 1 } });
+    micStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: { sampleRate: 24000, channelCount: 1, echoCancellation: true, noiseSuppression: true } 
+    });
     
-    // Use MediaRecorder with Opus codec to produce Ogg/Opus chunks
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-      ? 'audio/webm;codecs=opus' 
-      : 'audio/ogg;codecs=opus';
+    // Use MediaRecorder for Ogg/Opus encoding
+    const mimeType = MediaRecorder.isTypeSupported('audio/ogg; codecs=opus') 
+      ? 'audio/ogg; codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm; codecs=opus')
+        ? 'audio/webm; codecs=opus' 
+        : null;
     
-    // Alternative: send raw PCM via AudioWorklet and let the server encode
-    // But PersonaPlex expects Ogg/Opus, so we use their approach
-    
-    // Actually, PersonaPlex's own UI uses an Ogg encoder worklet.
-    // Simplest working approach: send audio via ScriptProcessor as Float32 PCM,
-    // wrapped in the protocol format. PersonaPlex may accept raw PCM too.
-    
-    audioContext = new AudioContext({ sampleRate: 24000 });
-    const source = audioContext.createMediaStreamSource(mediaStream);
-    scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
-    
-    scriptProcessor.onaudioprocess = (e) => {
-      if (isMuted || !ws || ws.readyState !== WebSocket.OPEN) return;
-      const input = e.inputBuffer.getChannelData(0);
-      // Convert Float32 to Int16
-      const pcm16 = new Int16Array(input.length);
-      for (let i = 0; i < input.length; i++)
-        pcm16[i] = Math.max(-32768, Math.min(32767, input[i] * 32768));
-      // Wrap in PersonaPlex protocol: [0x01, ...audio_bytes]
-      const msg = new Uint8Array(1 + pcm16.byteLength);
-      msg[0] = 0x01;
-      msg.set(new Uint8Array(pcm16.buffer), 1);
-      ws.send(msg.buffer);
-    };
-    source.connect(scriptProcessor);
-    scriptProcessor.connect(audioContext.destination);
+    if (mimeType) {
+      mediaRecorder = new MediaRecorder(micStream, { mimeType, audioBitsPerSecond: 24000 });
+      
+      mediaRecorder.ondataavailable = async (e) => {
+        if (e.data.size > 0 && ppWs && ppWs.readyState === WebSocket.OPEN && micActive) {
+          const buf = await e.data.arrayBuffer();
+          const audioBytes = new Uint8Array(buf);
+          // Wrap: [0x01 (audio kind), ...audio_data]
+          const msg = new Uint8Array(1 + audioBytes.length);
+          msg[0] = 0x01;
+          msg.set(audioBytes, 1);
+          ppWs.send(msg.buffer);
+        }
+      };
+      
+      mediaRecorder.start(100); // 100ms chunks
+    }
   } catch(err) {
-    console.warn('Mic unavailable:', err.message);
+    console.warn('Mic error:', err.message);
+    setStatus('connected', 'No mic — listen only');
   }
 }
 
-// Play Ogg/Opus audio from PersonaPlex
-let audioQueue = [];
-let isPlaying = false;
-
-async function playOggOpus(data) {
-  if (!audioContext) {
-    audioContext = new AudioContext({ sampleRate: 24000 });
-  }
-  // The data is raw Ogg/Opus container bytes — try decoding directly
-  try {
-    const audioBuffer = await audioContext.decodeAudioData(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength));
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioContext.destination);
-    source.start();
-  } catch(e) {
-    // Individual chunks may not be decodable alone — accumulate
-    accumulateAndPlay(data);
-  }
-}
-
-// Accumulate Ogg pages and try to decode when we have enough
-let oggBuffer = new Uint8Array(0);
-async function accumulateAndPlay(data) {
-  const combined = new Uint8Array(oggBuffer.length + data.length);
-  combined.set(oggBuffer);
-  combined.set(data, oggBuffer.length);
-  oggBuffer = combined;
-  
-  try {
-    const copy = oggBuffer.buffer.slice(0);
-    const audioBuffer = await audioContext.decodeAudioData(copy);
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioContext.destination);
-    source.start();
-    oggBuffer = new Uint8Array(0); // Reset after successful decode
-  } catch(e) {
-    // Need more data, keep accumulating
-  }
-}
-
-function onConnected() {
-  isConnected = true;
-  setStatus('connected', 'Connected');
-  document.getElementById('voiceName').textContent = voiceNames[voice] || voice;
-  startTimer();
-  // Stop pulse rings when connected
-  document.querySelectorAll('.pulse-ring').forEach(r => r.style.animationPlayState = 'paused');
-  document.getElementById('pulseCore').classList.add('speaking');
-}
-
+// ===== UI =====
 function setStatus(state, text) {
-  document.getElementById('statusDot').className = 'topbar-dot ' + state;
+  document.getElementById('statusDot').className = 'status-dot ' + state;
   document.getElementById('statusLabel').textContent = text;
 }
 
 function startTimer() {
-  callSeconds = 0;
   timerInterval = setInterval(() => {
-    callSeconds++;
-    const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
-    const s = String(callSeconds % 60).padStart(2, '0');
-    document.getElementById('timer').textContent = m + ':' + s;
+    seconds++;
+    const m = String(Math.floor(seconds/60)).padStart(2,'0');
+    const s = String(seconds%60).padStart(2,'0');
+    document.getElementById('timer').textContent = m+':'+s;
   }, 1000);
 }
 
-function addMessage(role, text) {
-  const container = document.getElementById('chatContainer');
+function addMessage(text) {
+  const chat = document.getElementById('chat');
   const msg = document.createElement('div');
-  msg.className = 'chat-msg ' + (role === 'user' ? 'user' : 'ai');
-  msg.innerHTML = `
-    <div class="chat-sender">${role === 'user' ? 'You' : voiceNames[voice] || 'AI'}</div>
-    <div class="chat-bubble">${escapeHtml(text)}</div>
-  `;
-  container.appendChild(msg);
-  container.scrollTop = container.scrollHeight;
-}
-
-function escapeHtml(t) {
+  msg.className = 'msg ai';
   const d = document.createElement('div');
-  d.textContent = t;
-  return d.innerHTML;
+  d.textContent = text;
+  msg.innerHTML = '<div class="msg-sender">Nole</div>';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = text;
+  msg.appendChild(bubble);
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
 }
 
-function toggleMute() {
-  isMuted = !isMuted;
-  document.getElementById('muteBtn').classList.toggle('muted', isMuted);
+function toggleMic() {
+  micActive = !micActive;
+  const btn = document.getElementById('micBtn');
+  if (micActive) {
+    btn.className = 'mic-btn active';
+    if (mediaRecorder && mediaRecorder.state === 'paused') mediaRecorder.resume();
+  } else {
+    btn.className = 'mic-btn muted';
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.pause();
+  }
 }
-
-function toggleSpeaker() {}
 
 function endCall() {
-  isConnected = false;
+  if (ppWs) try { ppWs.close(); } catch(e) {}
+  if (mediaRecorder) try { mediaRecorder.stop(); } catch(e) {}
+  if (micStream) micStream.getTracks().forEach(t => t.stop());
+  if (audioElement) audioElement.pause();
   clearInterval(timerInterval);
-  if (ws) { try { ws.close(); } catch(e){} ws = null; }
-  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
-  if (scriptProcessor) { scriptProcessor.disconnect(); scriptProcessor = null; }
-  if (audioContext) { audioContext.close(); audioContext = null; }
-  // Go back to main page
   window.location.href = '/';
 }
 
-// playAudioData removed — using playOggOpus + accumulateAndPlay instead
+// ===== GO =====
+connect();
 </script>
 </body>
 </html>
