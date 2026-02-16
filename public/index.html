@@ -191,30 +191,10 @@ input,select,textarea{font-family:inherit;outline:none}
       <a href="/samples.html" target="_blank" class="samples-link">🎙️ Preview all voice samples →</a>
     </div>
 
-    <button class="connect-btn" id="connectBtn" onclick="toggleCall()">Start Call</button>
+    <button class="connect-btn" id="connectBtn" onclick="startCall()">Start Call</button>
   </div>
 
-  <div class="call-ui" id="callUI">
-    <div class="call-avatar">
-      <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2" fill="none" stroke="#fff" stroke-width="2"/></svg>
-    </div>
-    <div class="status">
-      <span class="status-dot connected" id="callStatusDot"></span>
-      <span class="status-text" id="callStatusText">Connected</span>
-    </div>
-    <div class="timer" id="timer">00:00</div>
-    <div class="call-label" id="callPersonaLabel"></div>
-    <div class="call-voice" id="callVoiceLabel"></div>
-    <div class="visualizer" id="visualizer"></div>
-    <div class="call-actions">
-      <button class="call-action-btn mute-btn" id="muteBtn" onclick="toggleMute()" title="Mute">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-      </button>
-      <button class="call-action-btn end-btn" onclick="endCall()" title="End Call">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7 2 2 0 011.72 2v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 002.59 3.4z"/></svg>
-      </button>
-    </div>
-  </div>
+  <!-- Call UI moved to call.html -->
 </div>
 
 <!-- Settings Modal -->
@@ -244,8 +224,6 @@ input,select,textarea{font-family:inherit;outline:none}
 </div>
 
 <script>
-let ws=null,audioContext=null,mediaStream=null,scriptProcessor=null,timerInterval=null,callSeconds=0,isMuted=false,isConnected=false;
-
 function loadSettings(){return JSON.parse(localStorage.getItem('ve_settings')||'{}')}
 function openSettings(){const s=loadSettings();document.getElementById('settingsServerUrl').value=s.serverUrl||'';document.getElementById('settingsHfToken').value=s.hfToken||'';document.getElementById('settingsRunpodKey').value=s.runpodKey||'';document.getElementById('settingsOverlay').classList.add('visible')}
 function closeSettings(){document.getElementById('settingsOverlay').classList.remove('visible')}
@@ -304,41 +282,12 @@ function selectVoice(id){selectedVoice=id;document.getElementById('voiceSelect')
 
 document.getElementById('presets').addEventListener('click',e=>{const btn=e.target.closest('.preset-btn');if(!btn)return;document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const p=btn.dataset.persona;document.getElementById('personaInput').value=p;if(p==='')document.getElementById('personaInput').focus()});
 
-function initVisualizer(){const c=document.getElementById('visualizer');c.innerHTML='';for(let i=0;i<32;i++){const bar=document.createElement('div');bar.className='bar';c.appendChild(bar)}}
-function animateVisualizer(){if(!isConnected)return;document.querySelectorAll('.visualizer .bar').forEach(bar=>{bar.style.height=(4+Math.random()*48)+'px'});requestAnimationFrame(()=>setTimeout(animateVisualizer,80))}
-function startTimer(){callSeconds=0;updateTimerDisplay();timerInterval=setInterval(()=>{callSeconds++;updateTimerDisplay()},1000)}
-function stopTimer(){clearInterval(timerInterval)}
-function updateTimerDisplay(){const m=String(Math.floor(callSeconds/60)).padStart(2,'0'),s=String(callSeconds%60).padStart(2,'0');document.getElementById('timer').textContent=m+':'+s}
-function setStatus(state,text){document.getElementById('statusDot').className='status-dot '+state;document.getElementById('statusText').textContent=text}
-
-async function toggleCall(){
-if(isConnected){endCall();return}
-const btn=document.getElementById('connectBtn');btn.classList.add('connecting');btn.textContent='Connecting...';setStatus('connecting','Connecting...');
-try{
-mediaStream=await navigator.mediaDevices.getUserMedia({audio:true});
-audioContext=new AudioContext({sampleRate:24000});
-const source=audioContext.createMediaStreamSource(mediaStream);
-scriptProcessor=audioContext.createScriptProcessor(4096,1,1);
-const proto=location.protocol==='https:'?'wss:':'ws:';
-ws=new WebSocket(proto+'//'+location.host+'/voice');
-ws.onopen=()=>{ws.send(JSON.stringify({type:'start',voice:document.getElementById('voiceSelect').value,persona:document.getElementById('personaInput').value}))};
-ws.onmessage=evt=>{if(typeof evt.data==='string'){const msg=JSON.parse(evt.data);if(msg.type==='connected'||msg.type==='session_created')onConnected();else if(msg.type==='error'){setStatus('error',msg.message||'Error');endCall()}else if(msg.type==='backend_disconnected'){setStatus('error','Backend disconnected');endCall()}}else playAudioData(evt.data)};
-ws.onerror=()=>{setStatus('error','Connection failed');resetUI()};
-ws.onclose=()=>{if(isConnected)endCall()};
-scriptProcessor.onaudioprocess=e=>{if(!isMuted&&ws&&ws.readyState===WebSocket.OPEN){const input=e.inputBuffer.getChannelData(0);const pcm16=new Int16Array(input.length);for(let i=0;i<input.length;i++)pcm16[i]=Math.max(-32768,Math.min(32767,input[i]*32768));ws.send(pcm16.buffer)}};
-source.connect(scriptProcessor);scriptProcessor.connect(audioContext.destination);
-}catch(err){setStatus('error',err.message||'Microphone access denied');resetUI()}}
-
-function onConnected(){isConnected=true;document.getElementById('setupCard').style.display='none';document.getElementById('callUI').classList.add('visible');
-document.getElementById('callPersonaLabel').textContent=document.getElementById('personaInput').value.substring(0,60)+'...';
-const v=voices.find(x=>x.id===selectedVoice);document.getElementById('callVoiceLabel').textContent=v?v.name:selectedVoice;
-initVisualizer();animateVisualizer();startTimer()}
-
-function endCall(){isConnected=false;if(ws){try{ws.close()}catch(e){}ws=null}if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null}if(scriptProcessor){scriptProcessor.disconnect();scriptProcessor=null}if(audioContext){audioContext.close();audioContext=null}stopTimer();isMuted=false;document.getElementById('muteBtn').classList.remove('muted');document.getElementById('callUI').classList.remove('visible');document.getElementById('setupCard').style.display='block';resetUI()}
-function resetUI(){const btn=document.getElementById('connectBtn');btn.classList.remove('connecting','active');btn.textContent='Start Call';btn.disabled=false;setStatus('disconnected','Ready to connect')}
-function toggleMute(){isMuted=!isMuted;document.getElementById('muteBtn').classList.toggle('muted',isMuted)}
-
-async function playAudioData(data){if(!audioContext)return;try{const ab=data instanceof ArrayBuffer?data:await data.arrayBuffer();const pcm16=new Int16Array(ab);const f32=new Float32Array(pcm16.length);for(let i=0;i<pcm16.length;i++)f32[i]=pcm16[i]/32768;const buf=audioContext.createBuffer(1,f32.length,24000);buf.getChannelData(0).set(f32);const src=audioContext.createBufferSource();src.buffer=buf;src.connect(audioContext.destination);src.start()}catch(e){}}
+// Start Call → redirects to call.html with selected voice + persona
+function startCall(){
+  const v = selectedVoice;
+  const p = document.getElementById('personaInput').value;
+  window.location.href = '/call.html?voice=' + encodeURIComponent(v) + '&persona=' + encodeURIComponent(p);
+}
 
 populateVoices();
 </script>

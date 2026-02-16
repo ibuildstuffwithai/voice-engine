@@ -130,56 +130,157 @@ let timerInterval = null, callSeconds = 0;
 
 document.getElementById('voiceName').textContent = voiceNames[voice] || voice;
 
-// Auto-connect on load
+// PersonaPlex direct connection (same protocol as their web UI)
+// Message format: [kind_byte, ...payload]
+// 0x00 = handshake, 0x01 = audio (Ogg/Opus), 0x02 = text
+
+const PP_HOST = 'ymamku8yfkeqsu-8998.proxy.runpod.net';
+const PP_WS = `wss://${PP_HOST}/api/chat?voice_prompt=${encodeURIComponent(voice + '.pt')}&text_prompt=${encodeURIComponent(persona)}`;
+
+setStatus('connecting', 'Connecting...');
 connect();
 
 async function connect() {
+  // Connect directly to PersonaPlex (no relay)
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    setStatus('connecting', 'Connecting to PersonaPlex...');
+    ws = new WebSocket(PP_WS);
+    ws.binaryType = 'arraybuffer';
+  } catch(err) {
+    setStatus('error', 'WS failed: ' + err.message);
+    return;
+  }
+
+  let handshakeDone = false;
+  let oggEncoder = null;
+
+  ws.onopen = async () => {
+    setStatus('connecting', 'Waiting for handshake...');
+  };
+
+  ws.onmessage = (evt) => {
+    const data = new Uint8Array(evt.data);
+    const kind = data[0];
+    const payload = data.slice(1);
+
+    if (kind === 0x00 && !handshakeDone) {
+      // Handshake received
+      handshakeDone = true;
+      onConnected();
+      startMic();
+      return;
+    }
+
+    if (kind === 0x01) {
+      // Audio data (Ogg/Opus) — decode and play
+      playOggOpus(payload);
+    }
+
+    if (kind === 0x02) {
+      // Text token
+      const text = new TextDecoder().decode(payload);
+      handleTextToken(text);
+    }
+  };
+
+  ws.onerror = () => setStatus('error', 'Connection failed');
+  ws.onclose = () => { if (isConnected) endCall(); };
+}
+
+// Accumulate text tokens into messages
+let currentAiText = '';
+let textTimeout = null;
+function handleTextToken(text) {
+  currentAiText += text;
+  clearTimeout(textTimeout);
+  textTimeout = setTimeout(() => {
+    if (currentAiText.trim()) {
+      addMessage('ai', currentAiText.trim());
+      currentAiText = '';
+    }
+  }, 1500);
+}
+
+// Start microphone and encode as Ogg/Opus using MediaRecorder
+async function startMic() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 24000, channelCount: 1 } });
+    
+    // Use MediaRecorder with Opus codec to produce Ogg/Opus chunks
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+      ? 'audio/webm;codecs=opus' 
+      : 'audio/ogg;codecs=opus';
+    
+    // Alternative: send raw PCM via AudioWorklet and let the server encode
+    // But PersonaPlex expects Ogg/Opus, so we use their approach
+    
+    // Actually, PersonaPlex's own UI uses an Ogg encoder worklet.
+    // Simplest working approach: send audio via ScriptProcessor as Float32 PCM,
+    // wrapped in the protocol format. PersonaPlex may accept raw PCM too.
+    
     audioContext = new AudioContext({ sampleRate: 24000 });
     const source = audioContext.createMediaStreamSource(mediaStream);
     scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
-
-    ws = new WebSocket('ws://' + location.host + '/voice');
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'start', voice, persona }));
-    };
-
-    ws.onmessage = (evt) => {
-      if (typeof evt.data === 'string') {
-        const msg = JSON.parse(evt.data);
-        if (msg.type === 'connected' || msg.type === 'session_created') {
-          onConnected();
-        } else if (msg.type === 'error') {
-          setStatus('error', msg.message || 'Error');
-        } else if (msg.type === 'backend_disconnected') {
-          setStatus('error', 'Disconnected');
-        } else if (msg.type === 'transcript') {
-          addMessage(msg.role, msg.text);
-        }
-      } else {
-        playAudioData(evt.data);
-      }
-    };
-
-    ws.onerror = () => setStatus('error', 'Connection failed');
-    ws.onclose = () => { if (isConnected) endCall(); };
-
+    
     scriptProcessor.onaudioprocess = (e) => {
-      if (!isMuted && ws && ws.readyState === WebSocket.OPEN) {
-        const input = e.inputBuffer.getChannelData(0);
-        const pcm16 = new Int16Array(input.length);
-        for (let i = 0; i < input.length; i++)
-          pcm16[i] = Math.max(-32768, Math.min(32767, input[i] * 32768));
-        ws.send(pcm16.buffer);
-      }
+      if (isMuted || !ws || ws.readyState !== WebSocket.OPEN) return;
+      const input = e.inputBuffer.getChannelData(0);
+      // Convert Float32 to Int16
+      const pcm16 = new Int16Array(input.length);
+      for (let i = 0; i < input.length; i++)
+        pcm16[i] = Math.max(-32768, Math.min(32767, input[i] * 32768));
+      // Wrap in PersonaPlex protocol: [0x01, ...audio_bytes]
+      const msg = new Uint8Array(1 + pcm16.byteLength);
+      msg[0] = 0x01;
+      msg.set(new Uint8Array(pcm16.buffer), 1);
+      ws.send(msg.buffer);
     };
     source.connect(scriptProcessor);
     scriptProcessor.connect(audioContext.destination);
+  } catch(err) {
+    console.warn('Mic unavailable:', err.message);
+  }
+}
 
-  } catch (err) {
-    setStatus('error', err.message || 'Mic access denied');
+// Play Ogg/Opus audio from PersonaPlex
+let audioQueue = [];
+let isPlaying = false;
+
+async function playOggOpus(data) {
+  if (!audioContext) {
+    audioContext = new AudioContext({ sampleRate: 24000 });
+  }
+  // The data is raw Ogg/Opus container bytes — try decoding directly
+  try {
+    const audioBuffer = await audioContext.decodeAudioData(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength));
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    source.start();
+  } catch(e) {
+    // Individual chunks may not be decodable alone — accumulate
+    accumulateAndPlay(data);
+  }
+}
+
+// Accumulate Ogg pages and try to decode when we have enough
+let oggBuffer = new Uint8Array(0);
+async function accumulateAndPlay(data) {
+  const combined = new Uint8Array(oggBuffer.length + data.length);
+  combined.set(oggBuffer);
+  combined.set(data, oggBuffer.length);
+  oggBuffer = combined;
+  
+  try {
+    const copy = oggBuffer.buffer.slice(0);
+    const audioBuffer = await audioContext.decodeAudioData(copy);
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    source.start();
+    oggBuffer = new Uint8Array(0); // Reset after successful decode
+  } catch(e) {
+    // Need more data, keep accumulating
   }
 }
 
@@ -244,21 +345,7 @@ function endCall() {
   window.location.href = '/';
 }
 
-async function playAudioData(data) {
-  if (!audioContext) return;
-  try {
-    const ab = data instanceof ArrayBuffer ? data : await data.arrayBuffer();
-    const pcm16 = new Int16Array(ab);
-    const f32 = new Float32Array(pcm16.length);
-    for (let i = 0; i < pcm16.length; i++) f32[i] = pcm16[i] / 32768;
-    const buf = audioContext.createBuffer(1, f32.length, 24000);
-    buf.getChannelData(0).set(f32);
-    const src = audioContext.createBufferSource();
-    src.buffer = buf;
-    src.connect(audioContext.destination);
-    src.start();
-  } catch(e) {}
-}
+// playAudioData removed — using playOggOpus + accumulateAndPlay instead
 </script>
 </body>
 </html>

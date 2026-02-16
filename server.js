@@ -145,11 +145,15 @@ wss.on('connection', (clientWs, req) => {
   // Allow creating session on-the-fly via WS
   let session = sessionId ? sessions.get(sessionId) : null;
 
-  clientWs.on('message', (data) => {
+  console.log('[voice-engine] New WebSocket client connected');
+
+  clientWs.on('message', (data, isBinary) => {
     try {
+      const strData = Buffer.isBuffer(data) ? data.toString() : data;
       // First message can be a JSON control message
-      if (!session && typeof data === 'string') {
-        const msg = JSON.parse(data);
+      if (!session && !isBinary) {
+        console.log('[voice-engine] Received start message:', strData.substring(0, 200));
+        const msg = JSON.parse(strData);
         if (msg.type === 'start') {
           const id = uuidv4();
           session = {
@@ -169,8 +173,8 @@ wss.on('connection', (clientWs, req) => {
         }
       }
 
-      if (typeof data === 'string') {
-        const msg = JSON.parse(data);
+      if (!isBinary) {
+        const msg = JSON.parse(strData);
 
         if (msg.type === 'start' && session) {
           session.clientWs = clientWs;
