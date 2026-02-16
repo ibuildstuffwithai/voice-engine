@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenClaw Voice — Call</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#0a0a0a;color:#f5f5f5;min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* Top bar */
+.topbar{padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-logo{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,rgb(245,124,0),rgb(230,81,0));display:flex;align-items:center;justify-content:center}
+.topbar-logo svg{width:14px;height:14px;fill:#fff}
+.topbar-title{font-size:14px;font-weight:600;color:#8e8e93}
+.topbar-status{display:flex;align-items:center;gap:6px}
+.topbar-dot{width:8px;height:8px;border-radius:50%;background:#555}
+.topbar-dot.connecting{background:rgb(245,124,0);animation:pulse 1s infinite}
+.topbar-dot.connected{background:#34c759}
+.topbar-dot.error{background:#ff453a}
+.topbar-label{font-size:13px;color:#636366}
+.timer{font-size:13px;color:#8e8e93;font-variant-numeric:tabular-nums;font-weight:500}
+
+/* Main area */
+.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:0 24px}
+
+/* Pulse ring */
+.pulse-container{position:relative;width:160px;height:160px;margin-bottom:40px}
+.pulse-ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(245,124,0,.2);animation:ring 2s ease-out infinite}
+.pulse-ring:nth-child(2){animation-delay:.5s}
+.pulse-ring:nth-child(3){animation-delay:1s}
+.pulse-core{position:absolute;inset:30px;border-radius:50%;background:linear-gradient(135deg,rgb(245,124,0),rgb(230,81,0));display:flex;align-items:center;justify-content:center;box-shadow:0 0 60px rgba(245,124,0,.25)}
+.pulse-core svg{width:40px;height:40px;fill:#fff}
+.pulse-core.speaking{animation:speak-pulse .6s ease-in-out infinite alternate}
+@keyframes ring{0%{transform:scale(.8);opacity:.8}100%{transform:scale(1.6);opacity:0}}
+@keyframes speak-pulse{0%{transform:scale(1);box-shadow:0 0 60px rgba(245,124,0,.25)}100%{transform:scale(1.08);box-shadow:0 0 80px rgba(245,124,0,.4)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Voice label */
+.voice-name{font-size:18px;font-weight:700;color:#f5f5f5;margin-bottom:4px;text-align:center}
+.voice-sub{font-size:13px;color:#636366;margin-bottom:32px;text-align:center}
+
+/* Chat transcript */
+.chat-container{width:100%;max-width:600px;max-height:280px;overflow-y:auto;margin-bottom:32px;padding:0 8px;scroll-behavior:smooth}
+.chat-container::-webkit-scrollbar{width:4px}
+.chat-container::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+.chat-msg{margin-bottom:16px;display:flex;flex-direction:column}
+.chat-msg.user{align-items:flex-end}
+.chat-msg.ai{align-items:flex-start}
+.chat-sender{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.chat-msg.user .chat-sender{color:rgb(245,124,0)}
+.chat-msg.ai .chat-sender{color:#34c759}
+.chat-bubble{max-width:85%;padding:12px 18px;border-radius:16px;font-size:17px;font-weight:500;line-height:1.5}
+.chat-msg.user .chat-bubble{background:#1c1c1e;border-bottom-right-radius:4px;color:#f5f5f5}
+.chat-msg.ai .chat-bubble{background:#1a1a2e;border-bottom-left-radius:4px;color:#e0e0e0}
+.chat-typing{display:flex;gap:4px;padding:12px 18px}
+.chat-typing span{width:6px;height:6px;border-radius:50%;background:#636366;animation:typing .8s ease-in-out infinite}
+.chat-typing span:nth-child(2){animation-delay:.15s}
+.chat-typing span:nth-child(3){animation-delay:.3s}
+@keyframes typing{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+
+/* Bottom bar */
+.bottombar{padding:20px 24px 32px;display:flex;align-items:center;justify-content:center;gap:20px;flex-shrink:0}
+.mute-btn{width:56px;height:56px;border-radius:50%;background:#1c1c1e;border:1px solid #2a2a2e;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.mute-btn:hover{background:#2a2a2e}
+.mute-btn svg{width:22px;height:22px;color:#8e8e93}
+.mute-btn.muted{background:rgba(255,69,58,.15);border-color:rgba(255,69,58,.3)}
+.mute-btn.muted svg{color:#ff453a}
+.end-btn{padding:16px 48px;border-radius:50px;background:#ff453a;border:none;font-size:16px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;letter-spacing:.02em}
+.end-btn:hover{background:#dc2626;transform:scale(1.03)}
+
+/* Connecting state */
+.connecting-text{font-size:15px;color:#636366;text-align:center;margin-bottom:24px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2" fill="none" stroke="#fff" stroke-width="2"/></svg>
+    </div>
+    <span class="topbar-title">OpenClaw Voice</span>
+  </div>
+  <div class="topbar-status">
+    <div class="topbar-dot connecting" id="statusDot"></div>
+    <span class="topbar-label" id="statusLabel">Connecting...</span>
+    <span class="timer" id="timer"></span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="pulse-container" id="pulseContainer">
+    <div class="pulse-ring"></div>
+    <div class="pulse-ring"></div>
+    <div class="pulse-ring"></div>
+    <div class="pulse-core" id="pulseCore">
+      <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2" fill="none" stroke="#fff" stroke-width="2"/><line x1="12" y1="19" x2="12" y2="23" stroke="#fff" stroke-width="2"/></svg>
+    </div>
+  </div>
+
+  <div class="voice-name" id="voiceName">Connecting...</div>
+  <div class="voice-sub" id="voiceSub">OpenClaw Voice • PersonaPlex</div>
+
+  <div class="chat-container" id="chatContainer"></div>
+</div>
+
+<div class="bottombar">
+  <button class="mute-btn" id="muteBtn" onclick="toggleMute()" title="Mute">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+  </button>
+  <button class="end-btn" onclick="endCall()">End Call</button>
+  <button class="mute-btn" id="speakerBtn" onclick="toggleSpeaker()" title="Speaker" style="opacity:.5;pointer-events:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+  </button>
+</div>
+
+<script>
+// Get params from URL
+const params = new URLSearchParams(location.search);
+const voice = params.get('voice') || 'NATM2';
+const persona = params.get('persona') || 'You are a friendly and helpful AI assistant with a warm personality.';
+const voiceNames = {NATF0:'Nova',NATF1:'Aria',NATF2:'Luna',NATF3:'Sage',NATM0:'Atlas',NATM1:'Orion',NATM2:'Felix',NATM3:'Reed'};
+
+let ws = null, audioContext = null, mediaStream = null, scriptProcessor = null;
+let isMuted = false, isConnected = false;
+let timerInterval = null, callSeconds = 0;
+
+document.getElementById('voiceName').textContent = voiceNames[voice] || voice;
+
+// Auto-connect on load
+connect();
+
+async function connect() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new AudioContext({ sampleRate: 24000 });
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+
+    ws = new WebSocket('ws://' + location.host + '/voice');
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'start', voice, persona }));
+    };
+
+    ws.onmessage = (evt) => {
+      if (typeof evt.data === 'string') {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'connected' || msg.type === 'session_created') {
+          onConnected();
+        } else if (msg.type === 'error') {
+          setStatus('error', msg.message || 'Error');
+        } else if (msg.type === 'backend_disconnected') {
+          setStatus('error', 'Disconnected');
+        } else if (msg.type === 'transcript') {
+          addMessage(msg.role, msg.text);
+        }
+      } else {
+        playAudioData(evt.data);
+      }
+    };
+
+    ws.onerror = () => setStatus('error', 'Connection failed');
+    ws.onclose = () => { if (isConnected) endCall(); };
+
+    scriptProcessor.onaudioprocess = (e) => {
+      if (!isMuted && ws && ws.readyState === WebSocket.OPEN) {
+        const input = e.inputBuffer.getChannelData(0);
+        const pcm16 = new Int16Array(input.length);
+        for (let i = 0; i < input.length; i++)
+          pcm16[i] = Math.max(-32768, Math.min(32767, input[i] * 32768));
+        ws.send(pcm16.buffer);
+      }
+    };
+    source.connect(scriptProcessor);
+    scriptProcessor.connect(audioContext.destination);
+
+  } catch (err) {
+    setStatus('error', err.message || 'Mic access denied');
+  }
+}
+
+function onConnected() {
+  isConnected = true;
+  setStatus('connected', 'Connected');
+  document.getElementById('voiceName').textContent = voiceNames[voice] || voice;
+  startTimer();
+  // Stop pulse rings when connected
+  document.querySelectorAll('.pulse-ring').forEach(r => r.style.animationPlayState = 'paused');
+  document.getElementById('pulseCore').classList.add('speaking');
+}
+
+function setStatus(state, text) {
+  document.getElementById('statusDot').className = 'topbar-dot ' + state;
+  document.getElementById('statusLabel').textContent = text;
+}
+
+function startTimer() {
+  callSeconds = 0;
+  timerInterval = setInterval(() => {
+    callSeconds++;
+    const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+    const s = String(callSeconds % 60).padStart(2, '0');
+    document.getElementById('timer').textContent = m + ':' + s;
+  }, 1000);
+}
+
+function addMessage(role, text) {
+  const container = document.getElementById('chatContainer');
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg ' + (role === 'user' ? 'user' : 'ai');
+  msg.innerHTML = `
+    <div class="chat-sender">${role === 'user' ? 'You' : voiceNames[voice] || 'AI'}</div>
+    <div class="chat-bubble">${escapeHtml(text)}</div>
+  `;
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(t) {
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  document.getElementById('muteBtn').classList.toggle('muted', isMuted);
+}
+
+function toggleSpeaker() {}
+
+function endCall() {
+  isConnected = false;
+  clearInterval(timerInterval);
+  if (ws) { try { ws.close(); } catch(e){} ws = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (scriptProcessor) { scriptProcessor.disconnect(); scriptProcessor = null; }
+  if (audioContext) { audioContext.close(); audioContext = null; }
+  // Go back to main page
+  window.location.href = '/';
+}
+
+async function playAudioData(data) {
+  if (!audioContext) return;
+  try {
+    const ab = data instanceof ArrayBuffer ? data : await data.arrayBuffer();
+    const pcm16 = new Int16Array(ab);
+    const f32 = new Float32Array(pcm16.length);
+    for (let i = 0; i < pcm16.length; i++) f32[i] = pcm16[i] / 32768;
+    const buf = audioContext.createBuffer(1, f32.length, 24000);
+    buf.getChannelData(0).set(f32);
+    const src = audioContext.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioContext.destination);
+    src.start();
+  } catch(e) {}
+}
+</script>
+</body>
+</html>
