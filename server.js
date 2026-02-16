@@ -16,9 +16,11 @@ const path = require('path');
 
 // Config
 const PORT = process.env.VOICE_PORT || 3460;
-const PERSONAPLEX_HOST = process.env.PERSONAPLEX_HOST || 'localhost';
-const PERSONAPLEX_PORT = process.env.PERSONAPLEX_PORT || 8998;
-const PERSONAPLEX_WS = `wss://${PERSONAPLEX_HOST}:${PERSONAPLEX_PORT}/ws`;
+const PERSONAPLEX_HOST = process.env.PERSONAPLEX_HOST || 'ymamku8yfkeqsu-8998.proxy.runpod.net';
+const PERSONAPLEX_PORT = process.env.PERSONAPLEX_PORT || 443;
+const PERSONAPLEX_WS_BASE = PERSONAPLEX_HOST.includes('runpod.net') 
+  ? `wss://${PERSONAPLEX_HOST}/api/chat`
+  : `ws://${PERSONAPLEX_HOST}:${PERSONAPLEX_PORT}/api/chat`;
 
 // Available voices (shipped with PersonaPlex)
 const VOICES = {
@@ -213,34 +215,34 @@ wss.on('connection', (clientWs, req) => {
  * Relays audio bidirectionally between client and PersonaPlex.
  */
 function connectToBackend(session) {
-  // PersonaPlex uses WSS with self-signed certs
-  const backendWs = new WebSocket(PERSONAPLEX_WS, {
-    rejectUnauthorized: false, // Self-signed SSL from PersonaPlex
-    headers: {
-      'X-Voice': session.voice,
-      'X-Persona': session.persona,
-    },
-  });
-
+  // Build PersonaPlex URL with voice and persona as query params
+  const voiceFile = session.voice + '.pt';
+  const wsUrl = `${PERSONAPLEX_WS_BASE}?voice_prompt=${encodeURIComponent(voiceFile)}&text_prompt=${encodeURIComponent(session.persona)}`;
+  
+  console.log(`[voice-engine] Connecting to: ${wsUrl}`);
+  
+  const backendWs = new WebSocket(wsUrl);
   session.backendWs = backendWs;
+  let handshakeReceived = false;
 
   backendWs.on('open', () => {
-    session.status = 'active';
-    console.log(`[voice-engine] Session ${session.id} connected to PersonaPlex`);
-
-    // Send initial config to PersonaPlex
-    backendWs.send(JSON.stringify({
-      type: 'config',
-      voice_prompt: session.voice,
-      text_prompt: session.persona,
-    }));
-
-    if (session.clientWs?.readyState === WebSocket.OPEN) {
-      session.clientWs.send(JSON.stringify({ type: 'connected', sessionId: session.id }));
-    }
+    console.log(`[voice-engine] Session ${session.id} WebSocket open, waiting for handshake...`);
   });
 
   backendWs.on('message', (data) => {
+    const buf = Buffer.from(data);
+    
+    // PersonaPlex handshake: first message is 0x00 byte
+    if (!handshakeReceived && buf.length === 1 && buf[0] === 0x00) {
+      handshakeReceived = true;
+      session.status = 'active';
+      console.log(`[voice-engine] Session ${session.id} handshake received ✓`);
+      if (session.clientWs?.readyState === WebSocket.OPEN) {
+        session.clientWs.send(JSON.stringify({ type: 'connected', sessionId: session.id }));
+      }
+      return;
+    }
+    
     // Relay audio/messages from PersonaPlex back to client
     if (session.clientWs?.readyState === WebSocket.OPEN) {
       session.clientWs.send(data);
